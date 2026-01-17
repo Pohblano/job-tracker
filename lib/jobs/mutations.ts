@@ -22,8 +22,8 @@ export async function updateJobStatus(jobId: string, nextStatus: JobStatus): Pro
   if (!client) return { error: serviceError }
   const supabase = client
 
-  const { data: job, error: fetchError } = await supabase.from('jobs').select('status').eq('id', jobId).single()
-  const currentStatus = job?.status as JobStatus | undefined
+  const { data: jobRow, error: fetchError } = await supabase.from('jobs').select('status').eq('id', jobId).single()
+  const currentStatus = (jobRow as { status: JobStatus } | null)?.status
 
   if (fetchError || !currentStatus) {
     console.error('Failed to load job before status update', fetchError)
