@@ -2,6 +2,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { AdminJobsTable } from '@/components/admin/AdminJobsTable'
+import { LogoutButton } from '@/components/admin/LogoutButton'
 import { fetchAdminJobs } from '@/lib/jobs/queries'
 import { Button } from '@/components/ui/button'
 
@@ -20,6 +21,7 @@ export default async function AdminPage() {
               Manage production jobs and update progress
             </p>
           </div>
+          <LogoutButton />
         </div>
 
         <AdminJobsTable initialJobs={jobs} fetchError={error} />

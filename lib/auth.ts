@@ -1,5 +1,5 @@
-// Admin authentication helpers for SVB; enforces basic auth across middleware and server actions.
-import { headers } from 'next/headers'
+// Admin authentication helpers for SVB; supports both basic auth and session-based auth.
+import { cookies, headers } from 'next/headers'
 
 interface AdminCredentials {
   username: string
@@ -12,6 +12,7 @@ interface AdminAuthResult {
 }
 
 export const ADMIN_AUTH_REALM = 'SVB Admin'
+const SESSION_COOKIE_NAME = 'admin_session'
 
 export function getAdminCredentials(): AdminCredentials | { error: string } {
   const username = process.env.ADMIN_USERNAME
@@ -41,7 +42,18 @@ export function isBasicAuthValid(authHeader: string | null, credentials: AdminCr
   }
 }
 
+export function hasValidSession(): boolean {
+  const session = cookies().get(SESSION_COOKIE_NAME)
+  return !!session?.value
+}
+
 export function ensureAdminRequest(): AdminAuthResult {
+  // First check for session cookie (primary auth method)
+  if (hasValidSession()) {
+    return { success: true }
+  }
+
+  // Fallback to basic auth (for API access)
   const credentials = getAdminCredentials()
   if ('error' in credentials) {
     return { success: false, error: credentials.error }
