@@ -49,7 +49,7 @@ export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobForm
 
     if (!parsed.success) {
       const errors: FieldErrors = {}
-      parsed.error.errors.forEach((issue) => {
+      parsed.error.issues.forEach((issue) => {
         const field = issue.path[0] as keyof JobFormData
         if (!errors[field]) {
           errors[field] = issue.message
