@@ -167,26 +167,30 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
   const activeJobsCount = jobs.filter(j => j.status !== 'COMPLETED').length
 
   return (
-    <motion.div
-      className="flex flex-col gap-6"
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 0.8, 0.44, 1] } }}
-      exit={{ opacity: 0, y: -12, transition: { duration: 0.35, ease: [0.37, 0, 0.63, 1] } }}
-    >
+    <div className="flex flex-col gap-6">
       {/* Job Cards */}
-      <div className="space-y-4">
+      <motion.div
+        className="space-y-4"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 0.8, 0.44, 1] } }}
+        exit={{ opacity: 0, y: -12, transition: { duration: 0.35, ease: [0.37, 0, 0.63, 1] } }}
+      >
         {visibleJobs.length === 0 ? (
           <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white">
             <p className="text-lg text-muted-foreground">No active jobs at this time</p>
           </div>
         ) : (
           <AnimatePresence mode="popLayout">
-            {visibleJobs.map((job) => (
+            {visibleJobs.map((job, idx) => (
               <motion.div
                 key={job.id}
                 layout
                 initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  transition: { duration: 0.35, ease: 'easeOut', delay: idx * 0.05 },
+                }}
                 exit={{ opacity: 0, y: -8, transition: { duration: 0.25, ease: 'easeIn' } }}
               >
                 <JobCard job={job} />
@@ -194,7 +198,7 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
             ))}
           </AnimatePresence>
         )}
-      </div>
+      </motion.div>
 
       {/* Footer */}
       <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
@@ -209,11 +213,24 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
                 connectionState === 'disconnected' && 'bg-red-500'
               )}
             />
-            <span>
-              {connectionState === 'connected' && 'Live sync active'}
-              {connectionState === 'reconnecting' && 'Reconnecting...'}
-              {connectionState === 'disconnected' && 'Offline mode'}
-            </span>
+            <div className="flex flex-col leading-tight">
+              <span>
+                {connectionState === 'connected' && 'Live sync active'}
+                {connectionState === 'reconnecting' && 'Reconnecting...'}
+                {connectionState === 'disconnected' && 'Offline mode'}
+              </span>
+              <span className="text-xs text-gray-500">
+                Last updated:{' '}
+                {lastUpdated.toLocaleString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                })}
+              </span>
+            </div>
           </div>
 
           {/* Pagination */}
@@ -250,6 +267,6 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
 
       {/* Bottom padding for fixed footer */}
       <div className="h-20" />
-    </motion.div>
+    </div>
   )
 }

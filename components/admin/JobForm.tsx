@@ -28,10 +28,10 @@ interface JobFormProps {
 type FieldErrors = Partial<Record<keyof JobFormData, string>>
 
 const STATUS_OPTIONS: { label: string; value: JobStatus }[] = [
-  { label: 'Pending', value: 'RECEIVED' },
+  { label: 'Received', value: 'RECEIVED' },
   { label: 'Quoted', value: 'QUOTED' },
   { label: 'In Progress', value: 'IN_PROGRESS' },
-  { label: 'Done', value: 'COMPLETED' },
+  { label: 'Completed', value: 'COMPLETED' },
 ]
 
 export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobFormProps) {
@@ -39,11 +39,12 @@ export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobForm
   const [values, setValues] = useState({
     job_number: 'V-',
     part_number: 'P-',
+    title: '',
+    description: '',
     total_pieces: '',
     status: 'RECEIVED' as JobStatus,
     date_received: today,
     eta_text: '',
-    notes: '',
   })
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
@@ -56,8 +57,9 @@ export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobForm
       ...values,
       total_pieces: Number(values.total_pieces),
       pieces_completed: 0,
+      title: values.title || undefined,
+      description: values.description || undefined,
       eta_text: values.eta_text || undefined,
-      notes: values.notes || undefined,
       date_received: values.date_received || undefined,
     })
 
@@ -83,24 +85,8 @@ export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobForm
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Part Number and Job Number */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="job_number">
-            Job Number <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="job_number"
-            value={values.job_number}
-            onChange={(e) => updateField('job_number', e.target.value)}
-            placeholder="V-101"
-            disabled={submitting}
-            autoFocus
-          />
-          {fieldErrors.job_number && (
-            <p className="text-sm text-destructive">{fieldErrors.job_number}</p>
-          )}
-        </div>
-
         <div className="space-y-2">
           <Label htmlFor="part_number">
             Part Number <span className="text-destructive">*</span>
@@ -111,13 +97,61 @@ export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobForm
             onChange={(e) => updateField('part_number', e.target.value)}
             placeholder="P-9911"
             disabled={submitting}
+            autoFocus
           />
           {fieldErrors.part_number && (
             <p className="text-sm text-destructive">{fieldErrors.part_number}</p>
           )}
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="job_number">
+            Job Number <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="job_number"
+            value={values.job_number}
+            onChange={(e) => updateField('job_number', e.target.value)}
+            placeholder="V-101"
+            disabled={submitting}
+          />
+          {fieldErrors.job_number && (
+            <p className="text-sm text-destructive">{fieldErrors.job_number}</p>
+          )}
+        </div>
       </div>
 
+      {/* Title */}
+      <div className="space-y-2">
+        <Label htmlFor="title">Title</Label>
+        <Input
+          id="title"
+          value={values.title}
+          onChange={(e) => updateField('title', e.target.value)}
+          placeholder="e.g., Aerospace Dynamics"
+          disabled={submitting}
+        />
+        {fieldErrors.title && (
+          <p className="text-sm text-destructive">{fieldErrors.title}</p>
+        )}
+      </div>
+
+      {/* Description */}
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Input
+          id="description"
+          value={values.description}
+          onChange={(e) => updateField('description', e.target.value)}
+          placeholder="e.g., Main Turbine Housing Refurb"
+          disabled={submitting}
+        />
+        {fieldErrors.description && (
+          <p className="text-sm text-destructive">{fieldErrors.description}</p>
+        )}
+      </div>
+
+      {/* Total Pieces and Status */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="total_pieces">
@@ -162,6 +196,7 @@ export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobForm
         </div>
       </div>
 
+      {/* Date Received and ETA */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="date_received">Date Received</Label>
@@ -187,17 +222,6 @@ export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobForm
             disabled={submitting}
           />
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
-        <Input
-          id="notes"
-          value={values.notes}
-          onChange={(e) => updateField('notes', e.target.value)}
-          placeholder="Optional description or notes"
-          disabled={submitting}
-        />
       </div>
 
       <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">

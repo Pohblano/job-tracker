@@ -18,6 +18,8 @@ export const jobSchema = z
   .object({
     job_number: z.string().regex(/^V-\d+$/, 'Job number must use the V-### format'),
     part_number: z.string().regex(/^P-.+$/, 'Part number must start with P-'),
+    title: z.string().trim().max(100, 'Title must be 100 characters or fewer').optional().nullable(),
+    description: z.string().trim().max(200, 'Description must be 200 characters or fewer').optional().nullable(),
     total_pieces: z.number().int().min(1, 'Total pieces must be at least 1'),
     pieces_completed: z.number().int().min(0, 'Pieces completed cannot be negative').default(0),
     status: jobStatusSchema.default('RECEIVED'),
@@ -52,6 +54,8 @@ export const jobEditSchema = z.object({
   status: jobStatusSchema.optional(),
   pieces_completed: z.number().int().min(0).optional(),
   eta_text: etaSchema.optional(),
+  title: z.string().trim().max(100, 'Title must be 100 characters or fewer').optional().nullable(),
+  description: z.string().trim().max(200, 'Description must be 200 characters or fewer').optional().nullable(),
   notes: z
     .string()
     .trim()

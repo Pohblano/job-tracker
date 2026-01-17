@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
 
 interface EditJobModalProps {
   job: Job | null
@@ -29,7 +30,7 @@ const NOTES_LIMIT = 500
 
 export function EditJobModal({ job, onClose, onSaved }: EditJobModalProps) {
   const [status, setStatus] = useState<JobStatus>('RECEIVED')
-  const [piecesCompleted, setPiecesCompleted] = useState(0)
+  const [piecesCompletedInput, setPiecesCompletedInput] = useState('')
   const [etaText, setEtaText] = useState('')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -38,20 +39,37 @@ export function EditJobModal({ job, onClose, onSaved }: EditJobModalProps) {
   useEffect(() => {
     if (!job) return
     setStatus(job.status)
-    setPiecesCompleted(job.pieces_completed)
+    setPiecesCompletedInput(String(job.pieces_completed))
     setEtaText(job.eta_text ?? '')
     setNotes(job.notes ?? '')
     setError(null)
   }, [job])
 
+  const parsedPiecesCompleted = useMemo(() => {
+    if (piecesCompletedInput.trim() === '') return null
+    const value = Number(piecesCompletedInput)
+    return Number.isFinite(value) ? value : null
+  }, [piecesCompletedInput])
+
+  const piecesSliderValue = useMemo(() => {
+    const numeric = parsedPiecesCompleted ?? 0
+    if (!job) return numeric
+    return Math.min(Math.max(numeric, 0), job.total_pieces)
+  }, [parsedPiecesCompleted, job])
+
   const progressPercent = useMemo(
-    () => calculateProgressPercentage(piecesCompleted, job?.total_pieces ?? 1),
-    [piecesCompleted, job?.total_pieces],
+    () => calculateProgressPercentage(parsedPiecesCompleted ?? 0, job?.total_pieces ?? 1),
+    [parsedPiecesCompleted, job?.total_pieces],
   )
 
   const handleSubmit = () => {
     if (!job) return
-    if (piecesCompleted < 0 || piecesCompleted > job.total_pieces) {
+    if (parsedPiecesCompleted === null) {
+      setError('Pieces completed is required')
+      return
+    }
+
+    if (parsedPiecesCompleted < 0 || parsedPiecesCompleted > job.total_pieces) {
       setError(`Pieces completed must be between 0 and ${job.total_pieces}`)
       return
     }
@@ -60,7 +78,7 @@ export function EditJobModal({ job, onClose, onSaved }: EditJobModalProps) {
       setError(null)
       const result = await updateJobDetailsAction(job.id, {
         status,
-        pieces_completed: piecesCompleted,
+        pieces_completed: parsedPiecesCompleted,
         eta_text: etaText.trim() === '' ? null : etaText.trim(),
         notes: notes.trim() === '' ? null : notes.trim(),
       })
@@ -116,16 +134,21 @@ export function EditJobModal({ job, onClose, onSaved }: EditJobModalProps) {
               </div>
               <div className="space-y-2">
                 <Label>Pieces Completed<span className="ml-1 text-red-600">*</span></Label>
-                <Input
-                  type="number"
-                  value={piecesCompleted}
-                  onChange={(event) => setPiecesCompleted(Number(event.target.value))}
-                  min={0}
-                  max={job.total_pieces}
-                  className="h-11"
-                  disabled={isPending}
-                />
-                <p className="text-xs text-muted-foreground">Progress: {progressPercent}% of {job.total_pieces}</p>
+                <div className="space-y-3 rounded-lg border border-gray-200 p-3">
+                  <Slider
+                    value={[piecesSliderValue]}
+                    min={0}
+                    max={job.total_pieces}
+                    step={1}
+                    onValueChange={(vals) => setPiecesCompletedInput(String(vals[0] ?? 0))}
+                    disabled={isPending}
+                  />
+                  <div className="flex items-center justify-between text-sm text-gray-800">
+                    <span className="font-mono font-semibold">{piecesSliderValue}</span>
+                    <span className="text-muted-foreground">of {job.total_pieces}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Progress: {progressPercent}% of {job.total_pieces}</p>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Total Pieces</Label>

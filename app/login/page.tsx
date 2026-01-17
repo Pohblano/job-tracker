@@ -50,10 +50,6 @@ export default function LoginPage() {
       }
 
       setAuthState('redirecting')
-      toast({
-        title: 'Login successful',
-        description: 'Redirecting to admin…',
-      })
       setTimeout(() => {
         router.push('/admin')
         router.refresh()

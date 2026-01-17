@@ -10,6 +10,8 @@ export interface Database {
           id: string
           job_number: string
           part_number: string
+          title: string | null
+          description: string | null
           total_pieces: number
           pieces_completed: number
           status: JobStatus
@@ -26,6 +28,8 @@ export interface Database {
           id?: string
           job_number: string
           part_number: string
+          title?: string | null
+          description?: string | null
           total_pieces: number
           pieces_completed?: number
           status?: JobStatus
