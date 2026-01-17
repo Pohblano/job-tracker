@@ -72,11 +72,6 @@ export async function updateJobProgress(
     return { error: 'Job not found' }
   }
 
-  // Enforce monotonic completion: cannot decrease completed pieces.
-  if (parsed.data.pieces_completed < job.pieces_completed) {
-    return { error: 'Completed pieces cannot decrease' }
-  }
-
   const updatePayload: Database['public']['Tables']['jobs']['Update'] = {
     pieces_completed: parsed.data.pieces_completed,
     total_pieces: parsed.data.total_pieces,
@@ -128,9 +123,6 @@ export async function updateJobDetails(
   }
 
   if (parsed.data.pieces_completed !== undefined) {
-    if (parsed.data.pieces_completed < current.pieces_completed) {
-      return { error: 'Completed pieces cannot decrease' }
-    }
     if (parsed.data.pieces_completed > current.total_pieces) {
       return { error: 'Pieces completed cannot exceed total pieces' }
     }
