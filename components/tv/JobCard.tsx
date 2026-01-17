@@ -40,7 +40,7 @@ const STATUS_CONFIG: Record<JobStatus, {
   },
 }
 
-const STATUS_BADGE_BASE = 'border-0 px-4 py-1.5 text-[22px] font-bold uppercase tracking-[0.04em] leading-none whitespace-nowrap'
+const STATUS_BADGE_BASE = 'border-0 px-3 py-1 text-sm font-bold uppercase tracking-[0.04em] leading-none whitespace-nowrap sm:px-4 sm:py-1.5 sm:text-base lg:text-[22px]'
 
 function formatUpdatedTime(dateString: string): string {
   const date = new Date(dateString)
@@ -76,21 +76,21 @@ function JobCardComponent({ job }: JobCardProps) {
         highlighted && 'border-green-300 bg-green-50/50'
       )}
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_320px_220px] items-stretch divide-x divide-gray-100">
+      <div className="grid grid-cols-1 items-stretch divide-y divide-gray-100 md:grid-cols-[minmax(0,1fr)_280px_200px] md:divide-y-0 md:divide-x lg:grid-cols-[minmax(0,1fr)_320px_220px]">
         {/* Left: Job Info */}
-        <div className="p-4">
-          <div className="flex items-start justify-between">
+        <div className="p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <div className="font-mono text-sm font-semibold text-muted-foreground">{job.part_number || '—'}</div>
-              <div className="text-2xl font-bold text-gray-900 leading-tight">{job.title || job.job_number}</div>
-              <div className="text-sm text-muted-foreground line-clamp-2 min-h-[36px]">
+              <div className="font-mono text-xs font-semibold text-muted-foreground sm:text-sm">{job.part_number || '—'}</div>
+              <div className="text-lg font-bold text-gray-900 leading-tight sm:text-xl lg:text-2xl">{job.title || job.job_number}</div>
+              <div className="text-xs text-muted-foreground line-clamp-2 min-h-[32px] sm:min-h-[36px] sm:text-sm">
                 {job.description?.trim() || 'No description provided'}
               </div>
-              <div className="text-sm text-muted-foreground">Qty: {job.total_pieces}</div>
+              <div className="text-xs text-muted-foreground sm:text-sm">Qty: {job.total_pieces}</div>
             </div>
             <Badge
               variant="secondary"
-              className={cn('self-center', STATUS_BADGE_BASE, config.badgeClass)}
+              className={cn('self-start sm:self-center', STATUS_BADGE_BASE, config.badgeClass)}
             >
               {formatStatusLabel(job.status)}
             </Badge>
@@ -98,26 +98,26 @@ function JobCardComponent({ job }: JobCardProps) {
         </div>
 
         {/* Center: Progress */}
-        <div className="flex flex-col justify-center px-5 py-4">
-          <div className="mb-2 text-sm font-medium text-muted-foreground">Progress</div>
-          <Progress value={percentage} className={cn('h-3', config.progressClass)} />
-          <div className="mt-2 text-right text-lg font-semibold tabular-nums text-gray-900">
+        <div className="flex flex-col justify-center px-4 py-4 sm:px-5">
+          <div className="mb-2 text-xs font-medium text-muted-foreground sm:text-sm">Progress</div>
+          <Progress value={percentage} className={cn('h-2 sm:h-3 lg:h-4 xl:h-5', config.progressClass)} />
+          <div className="mt-2 text-left text-base font-semibold tabular-nums text-gray-900 sm:text-right sm:text-lg">
             {percentage}%
           </div>
         </div>
 
         {/* Right: ETA */}
-        <div className="flex flex-col justify-center px-5 py-4 text-right">
-          <div className="mb-1 text-sm font-medium text-muted-foreground">ETA</div>
+        <div className="flex flex-col justify-center px-4 py-4 text-left sm:px-5 md:text-right">
+          <div className="mb-1 text-xs font-medium text-muted-foreground sm:text-sm">ETA</div>
           <div
             className={cn(
-              'text-lg font-semibold',
+              'text-base font-semibold sm:text-lg',
               config.isDelayed ? 'text-red-600' : 'text-gray-900'
             )}
           >
             {config.isDelayed ? 'Delayed' : (job.eta_text || '—')}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-[11px] text-muted-foreground sm:text-xs">
             Updated {formatUpdatedTime(job.updated_at)}
           </div>
         </div>

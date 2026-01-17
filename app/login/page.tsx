@@ -2,8 +2,10 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion, type Variants } from 'framer-motion'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -81,6 +83,14 @@ export default function LoginPage() {
           exit="exit"
           className="w-full max-w-sm"
         >
+          <div className="mb-3 flex justify-start">
+            <Button variant="ghost" size="sm" asChild className="text-gray-600 hover:text-gray-900">
+              <Link href="/tv">
+                <ArrowLeft className="h-4 w-4" />
+                Back to TV view
+              </Link>
+            </Button>
+          </div>
           <Card className="shadow-lg">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl">Admin Login</CardTitle>

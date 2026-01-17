@@ -8,12 +8,13 @@ export function LogoutButton() {
   return (
     <Button
       variant="outline"
-      size="sm"
+      size="icon"
       onClick={() => logoutAction()}
       className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+      aria-label="Log out"
+      title="Log out"
     >
-      <LogOut className="mr-2 h-4 w-4" />
-      Logout
+      <LogOut className="h-4 w-4" />
     </Button>
   )
 }

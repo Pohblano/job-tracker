@@ -98,7 +98,7 @@ export function EditJobModal({ job, onClose, onSaved }: EditJobModalProps) {
 
   return (
     <Dialog open={Boolean(job)} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Job: {job?.job_number ?? ''}</DialogTitle>
           <DialogDescription>
@@ -107,8 +107,8 @@ export function EditJobModal({ job, onClose, onSaved }: EditJobModalProps) {
         </DialogHeader>
 
         {job && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Job Number</Label>
                 <Input value={job.job_number} disabled />
@@ -197,16 +197,16 @@ export function EditJobModal({ job, onClose, onSaved }: EditJobModalProps) {
             </div>
 
             {error && (
-              <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 sm:text-sm">
                 {error}
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-3">
-              <Button variant="outline" onClick={onClose} disabled={isPending}>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <Button variant="outline" onClick={onClose} disabled={isPending} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button onClick={handleSubmit} disabled={isPending}>
+              <Button onClick={handleSubmit} disabled={isPending} className="w-full sm:w-auto">
                 {isPending ? 'Saving…' : 'Save Changes'}
               </Button>
             </div>

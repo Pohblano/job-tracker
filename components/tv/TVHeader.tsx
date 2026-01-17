@@ -30,16 +30,20 @@ export function TVHeader() {
   }, [])
 
   return (
-    <header className="mb-8 flex items-start justify-between">
+    <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Shop Visibility Board</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Real-time production status</p>
+        <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl xl:text-5xl">
+          Shop Visibility Board
+        </h1>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm lg:text-base">
+          Real-time production status
+        </p>
       </div>
-      <div className="text-right">
-        <div className="text-3xl font-semibold tabular-nums text-gray-900">
+      <div className="text-left sm:text-right">
+        <div className="text-2xl font-semibold tabular-nums text-gray-900 sm:text-3xl lg:text-4xl xl:text-5xl">
           {mounted ? formatTime(now) : <span className="opacity-0">00:00:00 AM</span>}
         </div>
-        <div className="text-sm text-muted-foreground">
+        <div className="text-xs text-muted-foreground sm:text-sm lg:text-lg">
           {mounted ? formatDate(now) : <span className="opacity-0">Loading...</span>}
         </div>
       </div>

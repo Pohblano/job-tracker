@@ -12,7 +12,7 @@ export default async function TVPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto min-h-screen max-w-7xl px-8 py-8">
+      <div className="mx-auto min-h-screen max-w-7xl px-4 pb-0 pt-6 sm:px-6 sm:py-8 lg:px-8">
         <TVHeader />
         <JobsBoard initialJobs={jobs} initialFetchedAt={fetchedAt} initialError={error} />
       </div>

@@ -230,17 +230,79 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
   const showingEnd = Math.min(filteredJobs.length, pageIndex * pageSize + pageSize)
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
+      <div className="space-y-2 sm:hidden">
+        <div className="flex gap-2">
+          <Button variant="default" className="flex-1">
+            TV View
+          </Button>
+          <Button variant="outline" asChild className="flex-1">
+            <Link href="/admin">Admin View</Link>
+          </Button>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full">
+              Filters &amp; Order
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel className="text-xs text-muted-foreground">Show</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={filterMode}
+              onValueChange={(value) => {
+                setFilterMode(value as typeof filterMode)
+                setPageIndex(0)
+              }}
+            >
+              <DropdownMenuRadioItem value="active">Active only</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="all">All jobs</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="completed">Completed only</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuLabel className="text-xs text-muted-foreground">Order by</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={sortMode}
+              onValueChange={(value) => {
+                setSortMode(value as typeof sortMode)
+                setPageIndex(0)
+              }}
+            >
+              <DropdownMenuRadioItem value="status">Status, then recent</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="recent">Recently updated</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="priority">Priority high → low</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuLabel className="text-xs text-muted-foreground">Items per page</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={String(pageSize)}
+              onValueChange={(value) => {
+                const nextSize = Number(value) || 5
+                setPageSize(nextSize)
+                setPageIndex(0)
+              }}
+            >
+              {[3, 5, 7, 10].map((size) => (
+                <DropdownMenuRadioItem key={size} value={String(size)}>{size} items</DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       {/* Job Cards */}
       <motion.div
-        className="space-y-4"
+        className="space-y-3 sm:space-y-4"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 0.8, 0.44, 1] } }}
         exit={{ opacity: 0, y: -12, transition: { duration: 0.35, ease: [0.37, 0, 0.63, 1] } }}
       >
         {visibleJobs.length === 0 ? (
-          <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white">
-            <p className="text-lg text-muted-foreground">No active jobs at this time</p>
+          <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white sm:h-64">
+            <p className="text-center text-sm text-muted-foreground sm:text-lg">No active jobs at this time</p>
           </div>
         ) : (
           <AnimatePresence mode="popLayout">
@@ -266,12 +328,12 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
       {/* Footer */}
       <motion.div
         layout
-        className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white/95 backdrop-blur-sm"
+        className="-mx-4 border-t border-gray-200 bg-white md:fixed md:bottom-0 md:left-0 md:right-0 md:mx-0 md:bg-white/95 md:backdrop-blur-sm sm:-mx-6"
         transition={{ duration: 0.25, ease: [0.37, 0, 0.63, 1] }}
       >
-        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-8 py-3">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 py-4 sm:px-6 md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-0 md:px-8">
           {/* Connection Status */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground sm:text-sm">
             <span
               className={cn(
                 'h-2 w-2 rounded-full',
@@ -301,7 +363,7 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground justify-self-center">
+          <div className="flex flex-col items-start gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-4 sm:text-sm md:justify-self-center">
             <span>
               Showing <span className="font-semibold text-gray-900">{showingStart}-{showingEnd}</span> of{' '}
               <span className="font-semibold text-gray-900">{filteredJobs.length}</span>
@@ -350,77 +412,81 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
               </div>
             )}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Filters & Order
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Show</DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={filterMode}
-                  onValueChange={(value) => {
-                    setFilterMode(value as typeof filterMode)
-                    setPageIndex(0)
-                  }}
-                >
-                  <DropdownMenuRadioItem value="active">Active only</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="all">All jobs</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="completed">Completed only</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
+            <div className="hidden sm:block">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    Filters & Order
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Show</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={filterMode}
+                    onValueChange={(value) => {
+                      setFilterMode(value as typeof filterMode)
+                      setPageIndex(0)
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="active">Active only</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="all">All jobs</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="completed">Completed only</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
 
-                <DropdownMenuSeparator />
+                  <DropdownMenuSeparator />
 
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Order by</DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={sortMode}
-                  onValueChange={(value) => {
-                    setSortMode(value as typeof sortMode)
-                    setPageIndex(0)
-                  }}
-                >
-                  <DropdownMenuRadioItem value="status">Status, then recent</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="recent">Recently updated</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="priority">Priority high → low</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Order by</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={sortMode}
+                    onValueChange={(value) => {
+                      setSortMode(value as typeof sortMode)
+                      setPageIndex(0)
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="status">Status, then recent</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="recent">Recently updated</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="priority">Priority high → low</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
 
-                <DropdownMenuSeparator />
+                  <DropdownMenuSeparator />
 
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Items per page</DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={String(pageSize)}
-                  onValueChange={(value) => {
-                    const nextSize = Number(value) || 5
-                    setPageSize(nextSize)
-                    setPageIndex(0)
-                  }}
-                >
-                  {[3, 5, 7, 10].map((size) => (
-                    <DropdownMenuRadioItem key={size} value={String(size)}>{size} items</DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Items per page</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={String(pageSize)}
+                    onValueChange={(value) => {
+                      const nextSize = Number(value) || 5
+                      setPageSize(nextSize)
+                      setPageIndex(0)
+                    }}
+                  >
+                    {[3, 5, 7, 10].map((size) => (
+                      <DropdownMenuRadioItem key={size} value={String(size)}>{size} items</DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* View Toggle & Count */}
-          <div className="flex items-center justify-end gap-2">
-            <span className="text-sm text-muted-foreground">
+          <div className="flex flex-col items-start gap-2 text-xs sm:items-end sm:text-sm">
+            <span className="text-muted-foreground">
               Active jobs: {activeJobsCount}
             </span>
-            <Button variant="default" size="sm">
-              TV View
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/admin">Admin</Link>
-            </Button>
+            <div className="hidden items-center gap-2 sm:flex">
+              <Button variant="default" size="sm">
+                TV View
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/admin">Admin View</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </motion.div>
 
       {/* Bottom padding for fixed footer */}
-      <div className="h-20" />
+      <div className="hidden md:block md:h-20" />
     </div>
   )
 }
