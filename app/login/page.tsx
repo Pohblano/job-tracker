@@ -87,7 +87,16 @@ export default function LoginPage() {
               <CardDescription>Enter your credentials to access the admin panel</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4" aria-busy={isBusy}>
+              <form
+                onSubmit={handleSubmit}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' || event.isComposing) return
+                  event.preventDefault()
+                  event.currentTarget.requestSubmit()
+                }}
+                className="space-y-4"
+                aria-busy={isBusy}
+              >
                 <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
                   <Input
