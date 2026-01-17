@@ -1,0 +1,29 @@
+/* Global styles for SVB: establishes TV-first typography, high-contrast defaults, and Tailwind layers. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-tv-background text-tv-text font-sans antialiased min-h-screen;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold text-tv-text;
+  }
+}
+
+@layer components {
+  .tv-card {
+    @apply bg-white/95 border border-gray-200 shadow-sm rounded-xl;
+  }
+
+  .tv-job-row {
+    @apply transition-colors;
+    transition: background-color 1500ms ease, opacity 300ms ease;
+  }
+}
