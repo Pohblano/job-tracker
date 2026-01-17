@@ -66,3 +66,7 @@ export function ensureAdminRequest(): AdminAuthResult {
 
   return { success: true }
 }
+
+export function ensureAdminSession(): AdminAuthResult {
+  return hasValidSession() ? { success: true } : { success: false, error: 'Unauthorized admin request' }
+}

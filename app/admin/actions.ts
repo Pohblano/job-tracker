@@ -2,12 +2,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { ensureAdminRequest } from '@/lib/auth'
+import { ensureAdminRequest, ensureAdminSession } from '@/lib/auth'
 import { createJob, deleteJob, updateJobDetails, updateJobProgress, updateJobStatus } from '@/lib/jobs/mutations'
 import { type JobStatus } from '@/lib/jobs/types'
 
 export async function updateJobStatusAction(jobId: string, nextStatus: JobStatus) {
-  const auth = ensureAdminRequest()
+  const auth = ensureAdminSession()
   if (!auth.success) {
     return { error: auth.error }
   }
@@ -23,7 +23,7 @@ export async function updateJobStatusAction(jobId: string, nextStatus: JobStatus
 }
 
 export async function updateJobProgressAction(jobId: string, pieces_completed: number, total_pieces: number) {
-  const auth = ensureAdminRequest()
+  const auth = ensureAdminSession()
   if (!auth.success) {
     return { error: auth.error }
   }
@@ -39,7 +39,7 @@ export async function updateJobProgressAction(jobId: string, pieces_completed: n
 }
 
 export async function createJobAction(values: unknown) {
-  const auth = ensureAdminRequest()
+  const auth = ensureAdminSession()
   if (!auth.success) {
     return { error: auth.error }
   }
@@ -55,7 +55,7 @@ export async function createJobAction(values: unknown) {
 }
 
 export async function deleteJobAction(jobId: string) {
-  const auth = ensureAdminRequest()
+  const auth = ensureAdminSession()
   if (!auth.success) {
     return { error: auth.error }
   }
@@ -71,7 +71,7 @@ export async function deleteJobAction(jobId: string) {
 }
 
 export async function updateJobDetailsAction(jobId: string, values: unknown) {
-  const auth = ensureAdminRequest()
+  const auth = ensureAdminSession()
   if (!auth.success) {
     return { error: auth.error }
   }
