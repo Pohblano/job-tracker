@@ -2,7 +2,7 @@
 import { createServiceRoleSupabaseClient } from '@/lib/supabase/server'
 import { type Database } from '@/lib/supabase/types'
 import { type Job, type JobStatus } from './types'
-import { isForwardStatusTransition, jobEditSchema, jobSchema, progressUpdateSchema } from './validators'
+import { jobEditSchema, jobSchema, progressUpdateSchema } from './validators'
 
 interface MutationResult<T> {
   data?: T
@@ -29,10 +29,6 @@ export async function updateJobStatus(jobId: string, nextStatus: JobStatus): Pro
   if (fetchError || !currentStatus) {
     console.error('Failed to load job before status update', fetchError)
     return { error: 'Job not found' }
-  }
-
-  if (!isForwardStatusTransition(currentStatus, nextStatus)) {
-    return { error: 'Status must move forward only' }
   }
 
   const updatePayload: Database['public']['Tables']['jobs']['Update'] = { status: nextStatus }
@@ -103,7 +99,7 @@ export async function updateJobProgress(
 
 export async function updateJobDetails(
   jobId: string,
-  values: Partial<Pick<Job, 'status' | 'pieces_completed' | 'eta_text' | 'notes'>>,
+  values: Partial<Pick<Job, 'status' | 'pieces_completed' | 'eta_text' | 'title' | 'description' | 'notes'>>,
 ): Promise<MutationResult<Job>> {
   const { client, error: serviceError } = getServiceClient()
   if (!client) return { error: serviceError }
@@ -116,7 +112,7 @@ export async function updateJobDetails(
 
   const { data: current, error: fetchError } = await supabase
     .from('jobs')
-    .select('status,total_pieces,pieces_completed,eta_text,notes')
+    .select('status,total_pieces,pieces_completed,eta_text,title,description,notes')
     .eq('id', jobId)
     .single()
 
@@ -128,9 +124,6 @@ export async function updateJobDetails(
   const updates: Database['public']['Tables']['jobs']['Update'] = {}
 
   if (parsed.data.status) {
-    if (!isForwardStatusTransition(current.status as JobStatus, parsed.data.status)) {
-      return { error: 'Status must move forward only' }
-    }
     updates.status = parsed.data.status
   }
 
@@ -146,6 +139,16 @@ export async function updateJobDetails(
 
   if (parsed.data.eta_text !== undefined) {
     updates.eta_text = parsed.data.eta_text ?? null
+  }
+
+  if (parsed.data.title !== undefined) {
+    const trimmed = parsed.data.title?.trim()
+    updates.title = trimmed === '' ? null : trimmed ?? null
+  }
+
+  if (parsed.data.description !== undefined) {
+    const trimmed = parsed.data.description?.trim()
+    updates.description = trimmed === '' ? null : trimmed ?? null
   }
 
   if (parsed.data.notes !== undefined) {
@@ -179,6 +182,8 @@ export async function createJob(values: unknown): Promise<MutationResult<Job>> {
 
   const payload = {
     ...parsed.data,
+    title: parsed.data.title ?? null,
+    description: parsed.data.description ?? null,
     eta_text: parsed.data.eta_text ?? null,
     priority: parsed.data.priority ?? null,
     shop_area: parsed.data.shop_area ?? null,
