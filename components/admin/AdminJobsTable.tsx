@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Pencil, Trash2, Plus } from 'lucide-react'
 import { createJobAction, updateJobStatusAction, deleteJobAction } from '@/app/admin/actions'
@@ -361,6 +362,14 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-semibold text-gray-900">Jobs:</span>
             <span>{jobs.length}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/tv">TV View</Link>
+            </Button>
+            <Button variant="default" size="sm">
+              Admin
+            </Button>
           </div>
         </div>
       </div>
