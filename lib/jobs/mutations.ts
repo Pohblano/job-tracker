@@ -132,3 +132,18 @@ export async function createJob(values: unknown): Promise<MutationResult<Job>> {
 
   return { data }
 }
+
+export async function deleteJob(jobId: string): Promise<MutationResult<{ id: string }>> {
+  const { client, error: serviceError } = getServiceClient()
+  if (!client) return { error: serviceError }
+  const supabase = client
+
+  const { error } = await supabase.from('jobs').delete().eq('id', jobId)
+
+  if (error) {
+    console.error('Failed to delete job', error)
+    return { error: 'Could not delete job' }
+  }
+
+  return { data: { id: jobId } }
+}

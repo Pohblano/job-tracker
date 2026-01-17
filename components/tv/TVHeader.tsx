@@ -1,29 +1,48 @@
 'use client'
-// TV header shows the product title and live date/time for at-a-glance awareness.
+// TV header with title and large clock display
 import React, { useEffect, useState } from 'react'
 
-function buildHeaderTimestamp(date: Date) {
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
-  }).format(date)
+    second: '2-digit',
+    hour12: true,
+  })
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 export function TVHeader() {
+  const [mounted, setMounted] = useState(false)
   const [now, setNow] = useState(new Date())
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60000)
+    setMounted(true)
+    const timer = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
 
   return (
-    <header className="flex items-center justify-between border-b border-gray-200 pb-6">
-      <div className="text-5xl font-bold uppercase tracking-wide text-tv-text">Shop Visibility Board</div>
-      <div className="text-3xl font-semibold text-gray-700">{buildHeaderTimestamp(now)}</div>
+    <header className="mb-8 flex items-start justify-between">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Shop Visibility Board</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Real-time production status</p>
+      </div>
+      <div className="text-right">
+        <div className="text-3xl font-semibold tabular-nums text-gray-900">
+          {mounted ? formatTime(now) : <span className="opacity-0">00:00:00 AM</span>}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          {mounted ? formatDate(now) : <span className="opacity-0">Loading...</span>}
+        </div>
+      </div>
     </header>
   )
 }

@@ -1,7 +1,9 @@
-// Admin jobs list page for SVB; surfaces inline status and progress updates with validation.
+// Admin jobs list page - Job Management interface
 import React from 'react'
+import Link from 'next/link'
 import { AdminJobsTable } from '@/components/admin/AdminJobsTable'
 import { fetchAdminJobs } from '@/lib/jobs/queries'
+import { Button } from '@/components/ui/button'
 
 export const revalidate = 0
 
@@ -9,19 +11,37 @@ export default async function AdminPage() {
   const { jobs, error } = await fetchAdminJobs()
 
   return (
-    <main className="min-h-screen bg-white text-gray-900">
-      <div className="mx-auto max-w-6xl px-8 py-10">
-        <div className="mb-6 flex items-center justify-between">
+    <main className="min-h-screen bg-white">
+      <div className="mx-auto max-w-7xl px-8 py-10">
+        <div className="mb-8 flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Jobs</h1>
-            <p className="text-sm text-gray-600">Update status and progress inline; changes reflect on the TV immediately.</p>
-          </div>
-          <div className="rounded-lg bg-gray-50 px-4 py-2 text-sm text-gray-600">
-            Admin view — authenticated users only
+            <h1 className="text-3xl font-bold text-gray-900">Job Management</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage production jobs and update progress
+            </p>
           </div>
         </div>
 
         <AdminJobsTable initialJobs={jobs} fetchError={error} />
+
+        {/* Quick Tips */}
+        <div className="mt-8 flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-5 py-4">
+          <span className="text-gray-400">💡</span>
+          <div>
+            <p className="font-medium text-gray-900">Quick Tips</p>
+            <p className="text-sm text-muted-foreground">
+              Use the slider to update progress. Setting progress to 100% automatically marks jobs as complete.
+            </p>
+          </div>
+        </div>
+
+        {/* View Toggle Footer */}
+        <div className="fixed bottom-6 right-6 flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/tv">TV View</Link>
+          </Button>
+          <Button variant="default">Admin</Button>
+        </div>
       </div>
     </main>
   )

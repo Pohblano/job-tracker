@@ -1,10 +1,20 @@
-// Admin job form for SVB; uses the shared Zod validators to enforce business rules before calling server actions.
+// Admin job form using shadcn components
 'use client'
 
 import React, { useMemo, useState } from 'react'
 import { z } from 'zod'
 import { type JobStatus } from '@/lib/jobs/types'
 import { jobSchema } from '@/lib/jobs/validators'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export type JobFormData = z.infer<typeof jobSchema>
 
@@ -17,7 +27,12 @@ interface JobFormProps {
 
 type FieldErrors = Partial<Record<keyof JobFormData, string>>
 
-const STATUS_OPTIONS: JobStatus[] = ['RECEIVED', 'QUOTED', 'IN_PROGRESS', 'COMPLETED']
+const STATUS_OPTIONS: { label: string; value: JobStatus }[] = [
+  { label: 'Pending', value: 'RECEIVED' },
+  { label: 'Quoted', value: 'QUOTED' },
+  { label: 'In Progress', value: 'IN_PROGRESS' },
+  { label: 'Done', value: 'COMPLETED' },
+]
 
 export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobFormProps) {
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
@@ -27,6 +42,8 @@ export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobForm
     total_pieces: '',
     status: 'RECEIVED' as JobStatus,
     date_received: today,
+    eta_text: '',
+    notes: '',
   })
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
@@ -39,7 +56,8 @@ export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobForm
       ...values,
       total_pieces: Number(values.total_pieces),
       pieces_completed: 0,
-      eta_text: undefined,
+      eta_text: values.eta_text || undefined,
+      notes: values.notes || undefined,
       date_received: values.date_received || undefined,
     })
 
@@ -64,129 +82,142 @@ export function JobForm({ submitting, serverError, onSubmit, onCancel }: JobForm
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="space-y-4">
-        <FormField
-          label="Job Number"
-          required
-          value={values.job_number}
-          onChange={(value) => updateField('job_number', value)}
-          error={fieldErrors.job_number}
-          disabled={submitting}
-          inputProps={{ name: 'job_number', placeholder: 'V-101', autoFocus: true }}
-        />
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="job_number">
+            Job Number <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="job_number"
+            value={values.job_number}
+            onChange={(e) => updateField('job_number', e.target.value)}
+            placeholder="V-101"
+            disabled={submitting}
+            autoFocus
+          />
+          {fieldErrors.job_number && (
+            <p className="text-sm text-destructive">{fieldErrors.job_number}</p>
+          )}
+        </div>
 
-        <FormField
-          label="Part Number"
-          required
-          value={values.part_number}
-          onChange={(value) => updateField('part_number', value)}
-          error={fieldErrors.part_number}
-          disabled={submitting}
-          inputProps={{ name: 'part_number', placeholder: 'P-9911' }}
-        />
-
-        <FormField
-          label="Total Pieces"
-          required
-          value={values.total_pieces}
-          onChange={(value) => updateField('total_pieces', value)}
-          error={fieldErrors.total_pieces}
-          disabled={submitting}
-          inputProps={{ name: 'total_pieces', type: 'number', min: 1, inputMode: 'numeric' }}
-        />
-
-        <FormField
-          label="Date Received"
-          value={values.date_received}
-          onChange={(value) => updateField('date_received', value)}
-          error={fieldErrors.date_received}
-          disabled={submitting}
-          inputProps={{ name: 'date_received', type: 'date' }}
-        />
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Status
-            <span className="ml-1 text-red-600">*</span>
-          </label>
-          <div className="relative">
-            <select
-              name="status"
-              value={values.status}
-              onChange={(event) => updateField('status', event.target.value)}
-              className="block h-12 w-full rounded-md border border-gray-300 bg-gray-50 px-3 text-base text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
-              disabled={submitting}
-            >
-              {STATUS_OPTIONS.map((status) => (
-                <option key={status} value={status}>
-                  {status.replace('_', ' ')}
-                </option>
-              ))}
-            </select>
-          </div>
-          {fieldErrors.status && <p className="mt-1 text-sm text-red-600">{fieldErrors.status}</p>}
+        <div className="space-y-2">
+          <Label htmlFor="part_number">
+            Part Number <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="part_number"
+            value={values.part_number}
+            onChange={(e) => updateField('part_number', e.target.value)}
+            placeholder="P-9911"
+            disabled={submitting}
+          />
+          {fieldErrors.part_number && (
+            <p className="text-sm text-destructive">{fieldErrors.part_number}</p>
+          )}
         </div>
       </div>
 
-      <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="total_pieces">
+            Total Pieces <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="total_pieces"
+            type="number"
+            min={1}
+            value={values.total_pieces}
+            onChange={(e) => updateField('total_pieces', e.target.value)}
+            disabled={submitting}
+          />
+          {fieldErrors.total_pieces && (
+            <p className="text-sm text-destructive">{fieldErrors.total_pieces}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="status">
+            Status <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={values.status}
+            onValueChange={(value) => updateField('status', value)}
+            disabled={submitting}
+          >
+            <SelectTrigger id="status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {fieldErrors.status && (
+            <p className="text-sm text-destructive">{fieldErrors.status}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="date_received">Date Received</Label>
+          <Input
+            id="date_received"
+            type="date"
+            value={values.date_received}
+            onChange={(e) => updateField('date_received', e.target.value)}
+            disabled={submitting}
+          />
+          {fieldErrors.date_received && (
+            <p className="text-sm text-destructive">{fieldErrors.date_received}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="eta_text">ETA</Label>
+          <Input
+            id="eta_text"
+            value={values.eta_text}
+            onChange={(e) => updateField('eta_text', e.target.value)}
+            placeholder="Today 4:00 PM"
+            disabled={submitting}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Input
+          id="notes"
+          value={values.notes}
+          onChange={(e) => updateField('notes', e.target.value)}
+          placeholder="Optional description or notes"
+          disabled={submitting}
+        />
+      </div>
+
+      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
         Job will appear on the TV display immediately after creation.
       </div>
 
       {serverError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {serverError}
         </div>
       )}
 
       <div className="flex items-center justify-end gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400 disabled:cursor-not-allowed disabled:opacity-70"
-          disabled={submitting}
-        >
+        <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
           Cancel
-        </button>
-        <button
-          type="submit"
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
-          disabled={submitting}
-        >
-          {submitting ? 'Creating…' : 'Create Job'}
-        </button>
+        </Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting ? 'Creating...' : 'Create Job'}
+        </Button>
       </div>
     </form>
-  )
-}
-
-interface FormFieldProps {
-  label: string
-  value: string | number
-  required?: boolean
-  error?: string
-  onChange: (value: string) => void
-  disabled?: boolean
-  inputProps?: React.InputHTMLAttributes<HTMLInputElement>
-}
-
-function FormField({ label, value, required, error, onChange, disabled, inputProps }: FormFieldProps) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-gray-700">
-        {label}
-        {required && <span className="ml-1 text-red-600">*</span>}
-      </label>
-      <input
-        {...inputProps}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={`block h-12 w-full rounded-md border px-3 text-base text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 ${
-          error ? 'border-red-500' : 'border-gray-300 bg-gray-50'
-        }`}
-        disabled={disabled || inputProps?.disabled}
-      />
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-    </div>
   )
 }

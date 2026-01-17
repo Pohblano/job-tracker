@@ -1,271 +1,229 @@
-// Admin jobs table for SVB; supports filtering and inline status/progress updates with optimistic feedback.
+// Admin jobs table - matches Job Management mockup design
 'use client'
 
 import React, { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { createJobAction, updateJobProgressAction, updateJobStatusAction } from '@/app/admin/actions'
+import { Pencil, Trash2, Plus } from 'lucide-react'
+import { createJobAction, updateJobProgressAction, updateJobStatusAction, deleteJobAction } from '@/app/admin/actions'
 import { JobForm, type JobFormData } from '@/components/admin/JobForm'
-import { StatusPill } from '@/components/ui/StatusPill'
-import { type Job, type JobStatus } from '@/lib/jobs/types'
+import { type Job, type JobStatus, calculateProgressPercentage } from '@/lib/jobs/types'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Slider } from '@/components/ui/slider'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface AdminJobsTableProps {
   initialJobs: Job[]
   fetchError?: string
 }
 
-type Filter = 'ALL' | 'IN_PROGRESS' | 'QUOTED' | 'RECEIVED'
-
-const FILTER_OPTIONS: { label: string; value: Filter }[] = [
-  { label: 'All', value: 'ALL' },
-  { label: 'In Progress', value: 'IN_PROGRESS' },
+const STATUS_OPTIONS: { label: string; value: JobStatus }[] = [
+  { label: 'Pending', value: 'RECEIVED' },
   { label: 'Quoted', value: 'QUOTED' },
-  { label: 'Received', value: 'RECEIVED' },
+  { label: 'In Progress', value: 'IN_PROGRESS' },
+  { label: 'Done', value: 'COMPLETED' },
 ]
 
-const STATUS_FLOW: JobStatus[] = ['RECEIVED', 'QUOTED', 'IN_PROGRESS', 'COMPLETED']
-
-function nextStatus(status: JobStatus): JobStatus | null {
-  const idx = STATUS_FLOW.indexOf(status)
-  if (idx === -1 || idx === STATUS_FLOW.length - 1) return null
-  return STATUS_FLOW[idx + 1]
+const STATUS_BADGE_STYLES: Record<JobStatus, string> = {
+  RECEIVED: 'bg-gray-100 text-gray-700 hover:bg-gray-100',
+  QUOTED: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
+  IN_PROGRESS: 'bg-green-100 text-green-700 hover:bg-green-100',
+  COMPLETED: 'bg-green-100 text-green-700 hover:bg-green-100',
 }
 
-function formatProgress(job: Job) {
-  return `${job.pieces_completed} / ${job.total_pieces}`
+function getStatusLabel(status: JobStatus): string {
+  const option = STATUS_OPTIONS.find(o => o.value === status)
+  return option?.label || status.replace('_', ' ')
 }
 
-function NewJobDialog({
-  open,
-  submitting,
-  serverError,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean
-  submitting: boolean
-  serverError?: string | null
-  onClose: () => void
-  onSubmit: (values: JobFormData) => Promise<void>
-}) {
-  useEffect(() => {
-    if (!open) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
-
-  if (!open) return null
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6"
-      onClick={onClose}
-      aria-label="Create job dialog backdrop"
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-xl rounded-xl bg-white shadow-2xl ring-1 ring-black/5"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Create New Job</h2>
-            <p className="text-sm text-gray-600">New jobs appear on the TV as soon as they are saved.</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-2 text-gray-600 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
-            aria-label="Close create job dialog"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="px-6 py-5">
-          <JobForm submitting={submitting} serverError={serverError} onSubmit={onSubmit} onCancel={onClose} />
-        </div>
-      </div>
-    </div>
-  )
+function formatUpdatedTime(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 function AdminJobRow({
   job,
   onProgressUpdated,
   onStatusUpdated,
+  onDelete,
 }: {
   job: Job
-  onProgressUpdated: (id: string, piecesCompleted: number, totalPieces: number) => void
+  onProgressUpdated: (id: string, piecesCompleted: number) => void
   onStatusUpdated: (id: string, status: JobStatus) => void
+  onDelete: (id: string) => void
 }) {
   const router = useRouter()
-  const [isEditingProgress, setIsEditingProgress] = useState(false)
-  const [piecesCompleted, setPiecesCompleted] = useState(job.pieces_completed)
-  const [totalPieces, setTotalPieces] = useState(job.total_pieces)
-  const [rowError, setRowError] = useState<string | null>(null)
+  const percentage = calculateProgressPercentage(job.pieces_completed, job.total_pieces)
+  const [localPercentage, setLocalPercentage] = useState(percentage)
   const [statusPending, startStatusTransition] = useTransition()
   const [progressPending, startProgressTransition] = useTransition()
+  const [deletePending, startDeleteTransition] = useTransition()
 
   useEffect(() => {
-    setPiecesCompleted(job.pieces_completed)
-    setTotalPieces(job.total_pieces)
-  }, [job.pieces_completed, job.total_pieces])
+    setLocalPercentage(percentage)
+  }, [percentage])
 
-  const handleStatusAdvance = (target: JobStatus) => {
+  const handleStatusChange = (newStatus: JobStatus) => {
     startStatusTransition(async () => {
-      setRowError(null)
-      const result = await updateJobStatusAction(job.id, target)
-      if (result?.error) {
-        setRowError(result.error)
-        return
+      const result = await updateJobStatusAction(job.id, newStatus)
+      if (!result?.error) {
+        onStatusUpdated(job.id, newStatus)
+        router.refresh()
       }
-      onStatusUpdated(job.id, target)
-      router.refresh()
     })
   }
 
-  const handleProgressSave = () => {
+  const handleProgressCommit = (values: number[]) => {
+    const newPercentage = values[0]
+    const newCompleted = Math.round((newPercentage / 100) * job.total_pieces)
+
     startProgressTransition(async () => {
-      setRowError(null)
-      const result = await updateJobProgressAction(job.id, piecesCompleted, totalPieces)
-      if (result?.error) {
-        setRowError(result.error)
-        return
+      const result = await updateJobProgressAction(job.id, newCompleted, job.total_pieces)
+      if (!result?.error) {
+        onProgressUpdated(job.id, newCompleted)
+        // Auto-complete if 100%
+        if (newPercentage === 100 && job.status !== 'COMPLETED') {
+          await updateJobStatusAction(job.id, 'COMPLETED')
+          onStatusUpdated(job.id, 'COMPLETED')
+        }
+        router.refresh()
       }
-      onProgressUpdated(job.id, piecesCompleted, totalPieces)
-      setIsEditingProgress(false)
-      router.refresh()
     })
   }
 
-  const canAdvance = nextStatus(job.status)
+  const handleDelete = () => {
+    if (!confirm('Are you sure you want to delete this job?')) return
+    startDeleteTransition(async () => {
+      const result = await deleteJobAction(job.id)
+      if (!result?.error) {
+        onDelete(job.id)
+        router.refresh()
+      }
+    })
+  }
 
   return (
-    <>
-      <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
-        <td className="whitespace-nowrap px-4 py-3 font-mono text-sm font-semibold text-gray-900">{job.job_number}</td>
-        <td className="whitespace-nowrap px-4 py-3 font-mono text-sm font-semibold text-gray-900">{job.part_number}</td>
-        <td className="px-4 py-3">
-          <StatusPill status={job.status} size="sm" />
-        </td>
-        <td className="px-4 py-3 text-center text-sm text-gray-800">
-          <div className="flex items-center justify-center gap-2">
-            <span className="font-mono">{formatProgress(job)}</span>
-            <button
-              type="button"
-              className="text-xs font-medium text-blue-700 hover:text-blue-900"
-              onClick={() => setIsEditingProgress((prev) => !prev)}
-            >
-              {isEditingProgress ? 'Close' : 'Edit'}
-            </button>
+    <TableRow className="hover:bg-gray-50">
+      {/* Job Details */}
+      <TableCell className="py-4">
+        <div className="space-y-0.5">
+          <div className="font-mono text-sm font-semibold text-gray-900">{job.part_number}</div>
+          <div className="text-sm font-medium text-gray-900">{job.job_number}</div>
+          {job.notes && (
+            <div className="text-sm text-muted-foreground line-clamp-1">{job.notes}</div>
+          )}
+        </div>
+      </TableCell>
+
+      {/* Status */}
+      <TableCell>
+        <Select
+          value={job.status}
+          onValueChange={(value) => handleStatusChange(value as JobStatus)}
+          disabled={statusPending}
+        >
+          <SelectTrigger className="w-[130px] h-8 border-0 bg-transparent p-0 focus:ring-0">
+            <Badge className={cn('cursor-pointer', STATUS_BADGE_STYLES[job.status])}>
+              {getStatusLabel(job.status)}
+            </Badge>
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+
+      {/* Progress */}
+      <TableCell className="w-[200px]">
+        <div className="flex items-center gap-3">
+          <Slider
+            value={[localPercentage]}
+            onValueChange={(values) => setLocalPercentage(values[0])}
+            onValueCommit={handleProgressCommit}
+            max={100}
+            step={1}
+            className="w-[120px]"
+            disabled={progressPending}
+          />
+          <span className="text-sm text-muted-foreground w-10">{localPercentage}%</span>
+        </div>
+      </TableCell>
+
+      {/* ETA */}
+      <TableCell>
+        <div className="space-y-0.5">
+          <div className="text-sm font-medium text-gray-900">
+            {job.eta_text || '—'}
           </div>
-        </td>
-        <td className="px-4 py-3 text-sm text-gray-800">{job.eta_text ?? '—'}</td>
-        <td className="px-4 py-3">
-          <div className="flex items-center justify-end gap-2">
-            {canAdvance && (
-              <button
-                type="button"
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => handleStatusAdvance(canAdvance)}
-                disabled={statusPending}
-              >
-                Advance to {canAdvance.replace('_', ' ')}
-              </button>
-            )}
-            {job.status !== 'COMPLETED' && (
-              <button
-                type="button"
-                className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => handleStatusAdvance('COMPLETED')}
-                disabled={statusPending}
-              >
-                Mark Done ✓
-              </button>
-            )}
+          <div className="text-xs text-muted-foreground">
+            Updated {formatUpdatedTime(job.updated_at)}
           </div>
-        </td>
-      </tr>
-      {isEditingProgress && (
-        <tr className="border-b border-gray-200 bg-gray-50">
-          <td className="px-4 py-3 text-sm text-gray-700" colSpan={6}>
-            <div className="flex flex-wrap items-center gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600">Pieces Completed</label>
-                <input
-                  type="number"
-                  min={0}
-                  className="mt-1 w-32 rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  value={piecesCompleted}
-                  onChange={(e) => setPiecesCompleted(Number(e.target.value))}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600">Total Pieces</label>
-                <input
-                  type="number"
-                  min={1}
-                  className="mt-1 w-32 rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  value={totalPieces}
-                  onChange={(e) => setTotalPieces(Number(e.target.value))}
-                />
-              </div>
-              <div className="flex items-end gap-2">
-                <button
-                  type="button"
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={handleProgressSave}
-                  disabled={progressPending}
-                >
-                  {progressPending ? 'Saving…' : 'Save'}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-                  onClick={() => setIsEditingProgress(false)}
-                >
-                  Cancel
-                </button>
-                <span className="text-xs text-gray-500">Validation enforces completed ≤ total.</span>
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
-      {rowError && (
-        <tr className="border-b border-amber-200 bg-amber-50">
-          <td className="px-4 py-2 text-sm text-amber-800" colSpan={6}>
-            {rowError}
-          </td>
-        </tr>
-      )}
-    </>
+        </div>
+      </TableCell>
+
+      {/* Actions */}
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-gray-900"
+            disabled={deletePending}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={handleDelete}
+            disabled={deletePending}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
   )
 }
 
 export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps) {
   const router = useRouter()
   const [jobs, setJobs] = useState(initialJobs)
-  const [filter, setFilter] = useState<Filter>('ALL')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [creationError, setCreationError] = useState<string | null>(null)
-  const [creationNotice, setCreationNotice] = useState<string | null>(null)
   const [creating, startCreateTransition] = useTransition()
 
-  const filteredJobs = useMemo(() => {
-    if (filter === 'ALL') return jobs
-    return jobs.filter((job) => job.status === filter)
-  }, [filter, jobs])
-
-  const handleProgressUpdated = (id: string, piecesCompleted: number, totalPieces: number) => {
+  const handleProgressUpdated = (id: string, piecesCompleted: number) => {
     setJobs((current) =>
       current.map((job) =>
-        job.id === id ? { ...job, pieces_completed: piecesCompleted, total_pieces: totalPieces } : job,
+        job.id === id ? { ...job, pieces_completed: piecesCompleted } : job,
       ),
     )
   }
@@ -274,9 +232,12 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
     setJobs((current) => current.map((job) => (job.id === id ? { ...job, status } : job)))
   }
 
+  const handleDelete = (id: string) => {
+    setJobs((current) => current.filter((job) => job.id !== id))
+  }
+
   const handleCreateJob = async (values: JobFormData) => {
     setCreationError(null)
-    setCreationNotice(null)
 
     startCreateTransition(async () => {
       const result = await createJobAction(values)
@@ -293,113 +254,82 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
 
       setJobs((current) => [newJob, ...current])
       setIsCreateOpen(false)
-      setCreationNotice(`Job ${newJob.job_number} created and sent to the TV.`)
       router.refresh()
     })
   }
 
   return (
     <>
-      <NewJobDialog
-        open={isCreateOpen}
-        submitting={creating}
-        serverError={creationError}
-        onClose={() => {
-          setIsCreateOpen(false)
-          setCreationError(null)
-        }}
-        onSubmit={handleCreateJob}
-      />
+      {/* New Job Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Create New Job</DialogTitle>
+            <DialogDescription>
+              New jobs appear on the TV as soon as they are saved.
+            </DialogDescription>
+          </DialogHeader>
+          <JobForm
+            submitting={creating}
+            serverError={creationError}
+            onSubmit={handleCreateJob}
+            onCancel={() => setIsCreateOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-5 py-4">
-          <div className="flex flex-wrap items-center gap-3">
-            {FILTER_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  filter === option.value
-                    ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-300'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                onClick={() => setFilter(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
+      {/* Main Table Card */}
+      <div className="rounded-xl border border-gray-200 bg-white">
+        {/* Header with New Job button */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+          <div className="text-sm text-muted-foreground">
+            {jobs.length} job{jobs.length !== 1 ? 's' : ''} total
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setCreationError(null)
-                setIsCreateOpen(true)
-              }}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
-              disabled={creating}
-            >
-              + New Job
-            </button>
-            <div className="text-sm text-gray-600">
-              Showing {filteredJobs.length} of {jobs.length} jobs
-            </div>
-          </div>
+          <Button
+            onClick={() => {
+              setCreationError(null)
+              setIsCreateOpen(true)
+            }}
+            disabled={creating}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Job
+          </Button>
         </div>
 
-        {creationNotice && (
-          <div className="border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-sm text-emerald-800">
-            {creationNotice}
-          </div>
-        )}
-
         {fetchError ? (
-          <div className="px-5 py-4 text-sm text-red-700">Unable to load jobs: {fetchError}</div>
+          <div className="px-6 py-4 text-sm text-red-700">Unable to load jobs: {fetchError}</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
-                    Job #
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
-                    Part #
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
-                    Status
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">
-                    Progress
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
-                    ETA
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-600">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredJobs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-600">
-                      No jobs found for this filter.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredJobs.map((job) => (
-                    <AdminJobRow
-                      key={job.id}
-                      job={job}
-                      onProgressUpdated={handleProgressUpdated}
-                      onStatusUpdated={handleStatusUpdated}
-                    />
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[250px]">Job Details</TableHead>
+                <TableHead className="w-[150px]">Status</TableHead>
+                <TableHead className="w-[200px]">Progress</TableHead>
+                <TableHead className="w-[150px]">ETA</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {jobs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    No jobs found. Create your first job to get started.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                jobs.map((job) => (
+                  <AdminJobRow
+                    key={job.id}
+                    job={job}
+                    onProgressUpdated={handleProgressUpdated}
+                    onStatusUpdated={handleStatusUpdated}
+                    onDelete={handleDelete}
+                  />
+                ))
+              )}
+            </TableBody>
+          </Table>
         )}
       </div>
     </>

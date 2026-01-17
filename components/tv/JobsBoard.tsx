@@ -1,15 +1,16 @@
 'use client'
-// TV jobs table with realtime updates, deterministic sorting, and auto-rotation for high job volumes.
+// TV jobs board with card-based layout and realtime updates
 import React, { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { type Job } from '@/lib/jobs/types'
 import { prepareJobsForDisplay, sortJobs } from '@/lib/jobs/presentation'
-import { JobRow } from './JobRow'
-import { LastUpdated } from './LastUpdated'
+import { JobCard } from './JobCard'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-interface JobsTableProps {
+interface JobsBoardProps {
   initialJobs: Job[]
   initialFetchedAt: string
   initialError?: string
@@ -17,14 +18,14 @@ interface JobsTableProps {
 
 type ConnectionState = 'connected' | 'reconnecting' | 'disconnected'
 
-const PAGE_SIZE = 6
+const PAGE_SIZE = 5
 const ROTATION_INTERVAL_MS = 20000
 const ROTATION_PAUSE_MS = 5000
 const RECONNECT_DELAY_MS = 10000
 const MAX_RECONNECT_ATTEMPTS = 6
 const POLLING_FALLBACK_MS = 60000
 
-export function JobsTable({ initialJobs, initialFetchedAt, initialError }: JobsTableProps) {
+export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsBoardProps) {
   const supabase = useMemo(() => {
     if (typeof window === 'undefined') return null
     return createBrowserSupabaseClient()
@@ -34,7 +35,6 @@ export function JobsTable({ initialJobs, initialFetchedAt, initialError }: JobsT
   const [rotationPaused, setRotationPaused] = useState(false)
   const [connectionState, setConnectionState] = useState<ConnectionState>(initialError ? 'disconnected' : 'connected')
   const [lastUpdated, setLastUpdated] = useState(() => new Date(initialFetchedAt))
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(initialError)
 
   const pageCount = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE))
 
@@ -45,16 +45,12 @@ export function JobsTable({ initialJobs, initialFetchedAt, initialError }: JobsT
   }, [pageCount, pageIndex])
 
   useEffect(() => {
-    let rotationTimer: NodeJS.Timeout | null = null
-
-    rotationTimer = setInterval(() => {
+    const rotationTimer = setInterval(() => {
       if (rotationPaused || pageCount <= 1) return
       setPageIndex((current) => (current + 1) % pageCount)
     }, ROTATION_INTERVAL_MS)
 
-    return () => {
-      if (rotationTimer) clearInterval(rotationTimer)
-    }
+    return () => clearInterval(rotationTimer)
   }, [pageCount, rotationPaused])
 
   useEffect(() => {
@@ -65,7 +61,6 @@ export function JobsTable({ initialJobs, initialFetchedAt, initialError }: JobsT
     let reconnectTimeout: NodeJS.Timeout | null = null
     let activeChannel: RealtimeChannel = supabase.channel(`jobs-realtime-${Date.now()}`)
 
-    // Pause rotation briefly when new data arrives so viewers can read the change.
     const pauseRotationBriefly = () => {
       setRotationPaused(true)
       setTimeout(() => setRotationPaused(false), ROTATION_PAUSE_MS)
@@ -76,11 +71,9 @@ export function JobsTable({ initialJobs, initialFetchedAt, initialError }: JobsT
       if (!error && data) {
         setJobs(prepareJobsForDisplay(data))
         setLastUpdated(new Date())
-        setErrorMessage(undefined)
       }
     }
 
-    // Graceful degradation: poll once per minute when realtime is unavailable.
     const startFallbackPolling = () => {
       if (fallbackPoll) return
       fallbackPoll = setInterval(refreshFromSupabase, POLLING_FALLBACK_MS)
@@ -123,7 +116,6 @@ export function JobsTable({ initialJobs, initialFetchedAt, initialError }: JobsT
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             setConnectionState('connected')
-            setErrorMessage(undefined)
             reconnectAttempts = 0
             stopFallbackPolling()
             refreshFromSupabase()
@@ -165,51 +157,75 @@ export function JobsTable({ initialJobs, initialFetchedAt, initialError }: JobsT
     return sortJobs(jobs).slice(start, end)
   }, [jobs, pageIndex])
 
+  const activeJobsCount = jobs.filter(j => j.status !== 'COMPLETED').length
+
   return (
-    <div className="tv-card flex h-full flex-col gap-6 p-8 shadow-lg">
-      <div className="grid grid-cols-[140px_200px_240px_1fr_180px] items-center gap-8 border-b border-gray-200 pb-4 text-2xl font-bold uppercase tracking-wide text-gray-700">
-        <div>Job #</div>
-        <div>Part #</div>
-        <div>Status</div>
-        <div>Progress</div>
-        <div className="text-right">ETA</div>
+    <div className="flex flex-col gap-6">
+      {/* Job Cards */}
+      <div className="space-y-4">
+        {visibleJobs.length === 0 ? (
+          <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white">
+            <p className="text-lg text-muted-foreground">No active jobs at this time</p>
+          </div>
+        ) : (
+          visibleJobs.map((job) => <JobCard key={job.id} job={job} />)
+        )}
       </div>
 
-      {errorMessage && (
-        <div className="rounded-lg bg-amber-50 px-4 py-3 text-lg text-amber-800">
-          Using last known data — live updates will resume when connected.
-        </div>
-      )}
+      {/* Footer */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
+          {/* Connection Status */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span
+              className={cn(
+                'h-2 w-2 rounded-full',
+                connectionState === 'connected' && 'bg-green-500',
+                connectionState === 'reconnecting' && 'bg-yellow-500 animate-pulse',
+                connectionState === 'disconnected' && 'bg-red-500'
+              )}
+            />
+            <span>
+              {connectionState === 'connected' && 'Live sync active'}
+              {connectionState === 'reconnecting' && 'Reconnecting...'}
+              {connectionState === 'disconnected' && 'Offline mode'}
+            </span>
+          </div>
 
-      {visibleJobs.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-3xl text-gray-500">
-          No active jobs at this time
-        </div>
-      ) : (
-        <div className="divide-y divide-gray-100">
-          {visibleJobs.map((job) => (
-            <JobRow key={job.id} job={job} />
-          ))}
-        </div>
-      )}
+          {/* Pagination */}
+          {pageCount > 1 && (
+            <div className="flex items-center gap-2">
+              {Array.from({ length: pageCount }).map((_, idx) => (
+                <span
+                  key={`page-dot-${idx}`}
+                  className={cn(
+                    'h-2 w-2 rounded-full transition-colors',
+                    idx === pageIndex ? 'bg-gray-900' : 'bg-gray-300'
+                  )}
+                />
+              ))}
+            </div>
+          )}
 
-      {pageCount > 1 && (
-        <div className="flex items-center justify-center gap-3 text-lg text-gray-600">
-          <span>
-            Page {pageIndex + 1} of {pageCount}
-          </span>
-          <div className="flex items-center gap-2">
-            {Array.from({ length: pageCount }).map((_, idx) => (
-              <span
-                key={`page-dot-${idx}`}
-                className={cn('h-2.5 w-2.5 rounded-full', idx === pageIndex ? 'bg-gray-800' : 'bg-gray-300')}
-              />
-            ))}
+          {/* View Toggle & Count */}
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">
+              Active jobs: {activeJobsCount}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="default" size="sm">
+                TV View
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/admin">Admin</Link>
+              </Button>
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      <LastUpdated timestamp={lastUpdated} connectionState={connectionState} />
+      {/* Bottom padding for fixed footer */}
+      <div className="h-20" />
     </div>
   )
 }
