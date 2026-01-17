@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { AnimatePresence, motion } from 'framer-motion'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { type Job } from '@/lib/jobs/types'
 import { prepareJobsForDisplay, sortJobs } from '@/lib/jobs/presentation'
@@ -38,6 +39,12 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
   const [lastUpdated, setLastUpdated] = useState(() => new Date(initialFetchedAt))
 
   const pageCount = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE))
+  const handleManualPageChange = (delta: number) => {
+    if (pageCount <= 1) return
+    setRotationPaused(true)
+    setPageIndex((current) => (current + delta + pageCount) % pageCount)
+    setTimeout(() => setRotationPaused(false), ROTATION_PAUSE_MS)
+  }
 
   useEffect(() => {
     if (pageIndex >= pageCount) {
@@ -235,16 +242,34 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
 
           {/* Pagination */}
           {pageCount > 1 && (
-            <div className="flex items-center gap-2">
-              {Array.from({ length: pageCount }).map((_, idx) => (
-                <span
-                  key={`page-dot-${idx}`}
-                  className={cn(
-                    'h-2 w-2 rounded-full transition-colors',
-                    idx === pageIndex ? 'bg-gray-900' : 'bg-gray-300'
-                  )}
-                />
-              ))}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleManualPageChange(-1)}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-2">
+                {Array.from({ length: pageCount }).map((_, idx) => (
+                  <span
+                    key={`page-dot-${idx}`}
+                    className={cn(
+                      'h-2 w-2 rounded-full transition-colors',
+                      idx === pageIndex ? 'bg-gray-900' : 'bg-gray-300'
+                    )}
+                  />
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleManualPageChange(1)}
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           )}
 

@@ -5,6 +5,8 @@
 INSERT INTO public.jobs (
   job_number,
   part_number,
+  title,
+  description,
   total_pieces,
   pieces_completed,
   status,
@@ -18,6 +20,8 @@ INSERT INTO public.jobs (
 (
   'V-101',
   'P-9911',
+  'Aluminum bracket',
+  'High-tolerance bracket for engine mount',
   100,
   42,
   'IN_PROGRESS',
@@ -31,6 +35,8 @@ INSERT INTO public.jobs (
 (
   'V-102',
   'P-2211',
+  'Gear housing',
+  'Machined housing awaiting material',
   50,
   0,
   'QUOTED',
@@ -44,6 +50,8 @@ INSERT INTO public.jobs (
 (
   'V-103',
   'P-8823',
+  'Fixture plate',
+  'New fixture plate for assembly line',
   25,
   0,
   'RECEIVED',
@@ -53,4 +61,49 @@ INSERT INTO public.jobs (
   NULL,
   'New triple-signed drawing received',
   CURRENT_DATE - INTERVAL '1 day'
+),
+(
+  'V-104',
+  'P-7641',
+  'Stainless cover',
+  'Cover plate paused pending QA signoff',
+  85,
+  40,
+  'PAUSED',
+  '3 days',
+  'MEDIUM',
+  'CNC',
+  'Haas VF-4',
+  'Hold for QA inspection results',
+  CURRENT_DATE - INTERVAL '4 days'
+),
+(
+  'V-105',
+  'P-5532',
+  'Spacer set',
+  'Spacer kit for assembly line B',
+  60,
+  18,
+  'IN_PROGRESS',
+  '1 day',
+  'LOW',
+  'Manual',
+  NULL,
+  'Running 2nd operation',
+  CURRENT_DATE - INTERVAL '2 days'
+),
+(
+  'V-106',
+  'P-3310',
+  'Control panel',
+  'Electrical panel enclosure',
+  40,
+  40,
+  'COMPLETED',
+  'Complete',
+  'HIGH',
+  'Fabrication',
+  NULL,
+  'Ready for shipment',
+  CURRENT_DATE - INTERVAL '6 days'
 );

@@ -10,7 +10,7 @@ import { createJobAction, updateJobStatusAction, deleteJobAction } from '@/app/a
 import { EditJobModal } from '@/components/admin/EditJobModal'
 import { InlineProgressUpdate } from '@/components/admin/InlineProgressUpdate'
 import { JobForm, type JobFormData } from '@/components/admin/JobForm'
-import { type Job, type JobStatus, calculateProgressPercentage } from '@/lib/jobs/types'
+import { type Job, type JobStatus } from '@/lib/jobs/types'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -48,14 +48,32 @@ const STATUS_OPTIONS: { label: string; value: JobStatus }[] = [
   { label: 'Received', value: 'RECEIVED' },
   { label: 'Quoted', value: 'QUOTED' },
   { label: 'In Progress', value: 'IN_PROGRESS' },
+  { label: 'Paused', value: 'PAUSED' },
   { label: 'Completed', value: 'COMPLETED' },
 ]
 
-const STATUS_BADGE_STYLES: Record<JobStatus, string> = {
-  RECEIVED: 'bg-gray-100 text-gray-700 hover:bg-gray-100',
-  QUOTED: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
-  IN_PROGRESS: 'bg-green-100 text-green-700 hover:bg-green-100',
-  COMPLETED: 'bg-green-100 text-green-700 hover:bg-green-100',
+const STATUS_TRIGGER_STYLES: Record<JobStatus, string> = {
+  RECEIVED: 'border-gray-200 bg-gray-50 text-gray-800',
+  QUOTED: 'border-blue-200 bg-blue-50 text-blue-800',
+  IN_PROGRESS: 'border-green-200 bg-green-50 text-green-800',
+  PAUSED: 'border-amber-200 bg-amber-50 text-amber-800',
+  COMPLETED: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+}
+
+const STATUS_DOT_STYLES: Record<JobStatus, string> = {
+  RECEIVED: 'bg-gray-500',
+  QUOTED: 'bg-blue-600',
+  IN_PROGRESS: 'bg-green-600',
+  PAUSED: 'bg-amber-600',
+  COMPLETED: 'bg-emerald-600',
+}
+
+const STATUS_OPTION_STYLES: Record<JobStatus, string> = {
+  RECEIVED: 'data-[state=checked]:bg-gray-50 data-[state=checked]:text-gray-900',
+  QUOTED: 'data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-900',
+  IN_PROGRESS: 'data-[state=checked]:bg-green-50 data-[state=checked]:text-green-900',
+  PAUSED: 'data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-900',
+  COMPLETED: 'data-[state=checked]:bg-emerald-50 data-[state=checked]:text-emerald-900',
 }
 
 function getStatusLabel(status: JobStatus): string {
@@ -131,12 +149,12 @@ function AdminJobRow({
     <TableRow className="hover:bg-gray-50">
       {/* Job Details */}
       <TableCell className="w-[280px] max-w-[320px] py-4">
-        <div className="space-y-0.5">
-          <div className="text-base font-semibold text-gray-900 leading-tight">{job.title || job.job_number}</div>
-          <div className="font-mono text-xs font-semibold text-muted-foreground">{job.part_number}</div>
-          {job.description && (
-            <div className="text-sm text-muted-foreground line-clamp-1">{job.description}</div>
-          )}
+        <div className="space-y-1">
+          <div className="font-mono text-xs font-semibold text-muted-foreground">{job.part_number || '—'}</div>
+          <div className="text-xl font-bold text-gray-900 leading-tight">{job.title || job.job_number}</div>
+          <div className="text-sm text-muted-foreground line-clamp-2 min-h-[42px]">
+            {job.description?.trim() || 'No description provided'}
+          </div>
         </div>
       </TableCell>
 
@@ -147,14 +165,28 @@ function AdminJobRow({
           onValueChange={(value) => handleStatusChange(value as JobStatus)}
           disabled={statusPending}
         >
-          <SelectTrigger className="w-[130px] h-8 border-0 bg-transparent p-0 focus:ring-0">
-            <Badge className={cn('cursor-pointer', STATUS_BADGE_STYLES[job.status])}>
+          <SelectTrigger
+            className={cn(
+              'h-9 w-[160px] justify-between rounded-full px-4 text-sm font-semibold shadow-sm transition-colors focus:ring-2 focus:ring-offset-0',
+              STATUS_TRIGGER_STYLES[job.status],
+            )}
+          >
+            <span className="flex items-center gap-2">
+              <span className={cn('h-2.5 w-2.5 rounded-full', STATUS_DOT_STYLES[job.status])} />
               {getStatusLabel(job.status)}
-            </Badge>
+            </span>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-lg border border-gray-200 shadow-lg">
             {STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                className={cn(
+                  'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-gray-800 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground',
+                  STATUS_OPTION_STYLES[option.value],
+                )}
+              >
+                <span className={cn('h-2.5 w-2.5 rounded-full', STATUS_DOT_STYLES[option.value])} />
                 {option.label}
               </SelectItem>
             ))}
@@ -174,9 +206,6 @@ function AdminJobRow({
               router.refresh()
             }}
           />
-          <span className="text-xs text-muted-foreground">
-            {calculateProgressPercentage(job.pieces_completed, job.total_pieces)}%
-          </span>
         </div>
       </TableCell>
 

@@ -2,10 +2,10 @@
 import { z } from 'zod'
 import { type JobStatus } from './types'
 
-export const jobStatusSchema = z.enum(['RECEIVED', 'QUOTED', 'IN_PROGRESS', 'COMPLETED'])
+export const jobStatusSchema = z.enum(['RECEIVED', 'QUOTED', 'IN_PROGRESS', 'PAUSED', 'COMPLETED'])
 export const jobPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH'])
 
-const STATUS_FLOW_ORDER: JobStatus[] = ['RECEIVED', 'QUOTED', 'IN_PROGRESS', 'COMPLETED']
+const STATUS_FLOW_ORDER: JobStatus[] = ['RECEIVED', 'QUOTED', 'IN_PROGRESS', 'PAUSED', 'COMPLETED']
 
 const etaSchema = z
   .string()

@@ -5,7 +5,7 @@
 
 -- 1) Enums
 DO $$ BEGIN
-  CREATE TYPE job_status AS ENUM ('RECEIVED', 'QUOTED', 'IN_PROGRESS', 'COMPLETED');
+  CREATE TYPE job_status AS ENUM ('RECEIVED', 'QUOTED', 'IN_PROGRESS', 'PAUSED', 'COMPLETED');
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;

@@ -31,6 +31,7 @@ const STATUS_OPTIONS: { label: string; value: JobStatus }[] = [
   { label: 'Received', value: 'RECEIVED' },
   { label: 'Quoted', value: 'QUOTED' },
   { label: 'In Progress', value: 'IN_PROGRESS' },
+  { label: 'Paused', value: 'PAUSED' },
   { label: 'Completed', value: 'COMPLETED' },
 ]
 

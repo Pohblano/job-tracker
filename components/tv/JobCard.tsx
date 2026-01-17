@@ -1,7 +1,6 @@
 'use client'
 // Job card for TV display with status badge and progress bar
 import React, { memo, useEffect, useState } from 'react'
-import { CheckCircle2, Circle, Clock, AlertCircle } from 'lucide-react'
 import { type Job, type JobStatus, calculateProgressPercentage } from '@/lib/jobs/types'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -13,49 +12,56 @@ interface JobCardProps {
 }
 
 const STATUS_CONFIG: Record<JobStatus, {
-  label: string
-  icon: typeof Circle
   badgeClass: string
   progressClass: string
   isDelayed?: boolean
 }> = {
   RECEIVED: {
-    label: 'Pending',
-    icon: Circle,
-    badgeClass: 'bg-gray-100 text-gray-700 border-gray-200',
+    badgeClass: 'bg-gray-200 text-gray-800',
     progressClass: '[&>div]:bg-gray-400',
   },
   QUOTED: {
-    label: 'Blocked',
-    icon: AlertCircle,
-    badgeClass: 'bg-red-50 text-red-700 border-red-200',
-    progressClass: '[&>div]:bg-red-500',
+    badgeClass: 'bg-blue-100 text-blue-800',
+    progressClass: '[&>div]:bg-blue-500',
     isDelayed: true,
   },
   IN_PROGRESS: {
-    label: 'In Progress',
-    icon: Clock,
-    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
-    progressClass: '[&>div]:bg-blue-500',
+    badgeClass: 'bg-green-100 text-green-800',
+    progressClass: '[&>div]:bg-green-500',
+  },
+  PAUSED: {
+    badgeClass: 'bg-amber-100 text-amber-800',
+    progressClass: '[&>div]:bg-amber-500',
+    isDelayed: true,
   },
   COMPLETED: {
-    label: 'Done',
-    icon: CheckCircle2,
-    badgeClass: 'bg-green-50 text-green-700 border-green-200',
-    progressClass: '[&>div]:bg-green-500',
+    badgeClass: 'bg-gray-100 text-gray-500',
+    progressClass: '[&>div]:bg-gray-300',
   },
 }
 
+const STATUS_BADGE_BASE = 'border-0 px-5 py-2.5 text-[28px] font-bold uppercase tracking-[0.05em] leading-none whitespace-nowrap'
+
 function formatUpdatedTime(dateString: string): string {
   const date = new Date(dateString)
-  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
+function formatStatusLabel(status: JobStatus): string {
+  return status.replace(/_/g, ' ')
 }
 
 function JobCardComponent({ job }: JobCardProps) {
   const [highlighted, setHighlighted] = useState(false)
   const percentage = calculateProgressPercentage(job.pieces_completed, job.total_pieces)
   const config = STATUS_CONFIG[job.status]
-  const Icon = config.icon
 
   useEffect(() => {
     setHighlighted(true)
@@ -70,32 +76,29 @@ function JobCardComponent({ job }: JobCardProps) {
         highlighted && 'border-green-300 bg-green-50/50'
       )}
     >
-      <div className="flex items-stretch">
+      <div className="grid grid-cols-[minmax(0,1fr)_320px_220px] items-stretch divide-x divide-gray-100">
         {/* Left: Job Info */}
-        <div className="flex-1 border-r border-gray-100 p-5">
+        <div className="p-5">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
+              <div className="font-mono text-sm font-semibold text-muted-foreground">{job.part_number || '—'}</div>
               <div className="text-2xl font-bold text-gray-900 leading-tight">{job.title || job.job_number}</div>
-              <div className="font-mono text-sm font-semibold text-muted-foreground">{job.part_number}</div>
-              {job.description && (
-                <div className="text-sm text-muted-foreground line-clamp-1">{job.description}</div>
-              )}
-              <div className="text-sm text-muted-foreground">
-                Qty: {job.total_pieces}
+              <div className="text-sm text-muted-foreground line-clamp-2 min-h-[42px]">
+                {job.description?.trim() || 'No description provided'}
               </div>
+              <div className="text-sm text-muted-foreground">Qty: {job.total_pieces}</div>
             </div>
             <Badge
               variant="outline"
-              className={cn('flex items-center gap-1.5 px-3 py-1', config.badgeClass)}
+              className={cn(STATUS_BADGE_BASE, config.badgeClass)}
             >
-              <Icon className="h-3.5 w-3.5" />
-              {config.label}
+              {formatStatusLabel(job.status)}
             </Badge>
           </div>
         </div>
 
         {/* Center: Progress */}
-        <div className="flex w-[280px] flex-col justify-center border-r border-gray-100 px-6 py-5">
+        <div className="flex flex-col justify-center px-6 py-5">
           <div className="mb-2 text-sm font-medium text-muted-foreground">Progress</div>
           <Progress value={percentage} className={cn('h-3', config.progressClass)} />
           <div className="mt-2 text-right text-lg font-semibold tabular-nums text-gray-900">
@@ -104,7 +107,7 @@ function JobCardComponent({ job }: JobCardProps) {
         </div>
 
         {/* Right: ETA */}
-        <div className="flex w-[180px] flex-col justify-center px-6 py-5 text-right">
+        <div className="flex flex-col justify-center px-6 py-5 text-right">
           <div className="mb-1 text-sm font-medium text-muted-foreground">ETA</div>
           <div
             className={cn(

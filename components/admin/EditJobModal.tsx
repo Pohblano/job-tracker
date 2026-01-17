@@ -25,7 +25,7 @@ interface EditJobModalProps {
   onSaved: (job: Job) => void
 }
 
-const STATUS_OPTIONS: JobStatus[] = ['RECEIVED', 'QUOTED', 'IN_PROGRESS', 'COMPLETED']
+const STATUS_OPTIONS: JobStatus[] = ['RECEIVED', 'QUOTED', 'IN_PROGRESS', 'PAUSED', 'COMPLETED']
 const NOTES_LIMIT = 500
 
 export function EditJobModal({ job, onClose, onSaved }: EditJobModalProps) {
@@ -147,7 +147,6 @@ export function EditJobModal({ job, onClose, onSaved }: EditJobModalProps) {
                     <span className="font-mono font-semibold">{piecesSliderValue}</span>
                     <span className="text-muted-foreground">of {job.total_pieces}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Progress: {progressPercent}% of {job.total_pieces}</p>
                 </div>
               </div>
               <div className="space-y-2">

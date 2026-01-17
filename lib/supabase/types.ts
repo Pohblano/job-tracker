@@ -1,5 +1,5 @@
 // Supabase type definitions for SVB; keeps client/server Supabase usage consistent with the database schema.
-export type JobStatus = 'RECEIVED' | 'QUOTED' | 'IN_PROGRESS' | 'COMPLETED'
+export type JobStatus = 'RECEIVED' | 'QUOTED' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED'
 export type JobPriority = 'LOW' | 'MEDIUM' | 'HIGH'
 
 export interface Database {

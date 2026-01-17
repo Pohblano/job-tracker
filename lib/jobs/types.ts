@@ -5,7 +5,7 @@ export type Job = Database['public']['Tables']['jobs']['Row']
 export type JobStatus = Job['status']
 export type JobPriority = Job['priority']
 
-export const JOB_STATUS_ORDER: JobStatus[] = ['IN_PROGRESS', 'QUOTED', 'RECEIVED', 'COMPLETED']
+export const JOB_STATUS_ORDER: JobStatus[] = ['IN_PROGRESS', 'PAUSED', 'QUOTED', 'RECEIVED', 'COMPLETED']
 export const COMPLETED_VISIBILITY_DAYS = 7
 
 export function getStatusRank(status: JobStatus) {
