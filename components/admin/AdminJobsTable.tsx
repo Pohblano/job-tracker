@@ -109,6 +109,7 @@ function AdminJobRow({
   onStatusUpdated,
   onDelete,
   onEdit,
+  broadcastChannel,
 }: {
   job: Job
   index: number
@@ -116,6 +117,7 @@ function AdminJobRow({
   onStatusUpdated: (id: string, status: JobStatus) => void
   onDelete: (id: string) => void
   onEdit: (job: Job) => void
+  broadcastChannel: BroadcastChannel | null
 }) {
   const router = useRouter()
   const logger = useLogger('AdminJobsTable')
@@ -491,6 +493,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
                       onStatusUpdated={handleStatusUpdated}
                       onDelete={handleDelete}
                       onEdit={setEditingJob}
+                      broadcastChannel={broadcastChannel}
                     />
                   ))}
                 </AnimatePresence>
