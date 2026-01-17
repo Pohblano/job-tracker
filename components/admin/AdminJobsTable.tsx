@@ -80,6 +80,8 @@ function AdminJobRow({
   const router = useRouter()
   const [statusPending, startStatusTransition] = useTransition()
   const [deletePending, startDeleteTransition] = useTransition()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const handleStatusChange = (newStatus: JobStatus) => {
     startStatusTransition(async () => {
@@ -92,13 +94,16 @@ function AdminJobRow({
   }
 
   const handleDelete = () => {
-    if (!confirm('Are you sure you want to delete this job?')) return
+    setDeleteError(null)
     startDeleteTransition(async () => {
       const result = await deleteJobAction(job.id)
-      if (!result?.error) {
-        onDelete(job.id)
-        router.refresh()
+      if (result?.error) {
+        setDeleteError(result.error)
+        return
       }
+      onDelete(job.id)
+      setDeleteOpen(false)
+      router.refresh()
     })
   }
 
@@ -183,13 +188,37 @@ function AdminJobRow({
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            onClick={handleDelete}
+            onClick={() => setDeleteOpen(true)}
             disabled={deletePending}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </TableCell>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete job?</DialogTitle>
+            <DialogDescription>
+              This will remove {job.job_number} ({job.part_number}) from the board. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {deleteError}
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deletePending}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deletePending}>
+              {deletePending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </TableRow>
   )
 }
