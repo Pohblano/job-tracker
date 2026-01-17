@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { toast } from '@/components/ui/use-toast'
 import { loginAction } from './actions'
 
 type AuthState = 'idle' | 'submitting' | 'redirecting'
@@ -40,17 +41,31 @@ export default function LoginPage() {
       if (result.error) {
         setError(result.error)
         setAuthState('idle')
+        toast({
+          title: 'Login failed',
+          description: result.error,
+          variant: 'destructive',
+        })
         return
       }
 
       setAuthState('redirecting')
+      toast({
+        title: 'Login successful',
+        description: 'Redirecting to admin…',
+      })
       setTimeout(() => {
         router.push('/admin')
         router.refresh()
-      }, 200)
+      }, 3000)
     } catch {
       setError('An unexpected error occurred')
       setAuthState('idle')
+      toast({
+        title: 'Unexpected error',
+        description: 'Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
