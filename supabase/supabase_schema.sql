@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS public.jobs (
   -- Core identifiers
   job_number text NOT NULL,         -- V-number alignment (e.g., V-101)
   part_number text NOT NULL,        -- Part identifier (e.g., P-9911)
+  title text NULL,                  -- Optional display title
+  description text NULL,            -- Optional display description
 
   -- Production
   total_pieces integer NOT NULL CHECK (total_pieces > 0),
