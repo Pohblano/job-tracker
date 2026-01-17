@@ -32,17 +32,9 @@ export default async function AdminPage() {
           <div>
             <p className="font-medium text-gray-900">Quick Tips</p>
             <p className="text-sm text-muted-foreground">
-              Use the slider to update progress. Setting progress to 100% automatically marks jobs as complete.
+              Click progress to edit inline. Setting progress to 100% automatically marks jobs as complete.
             </p>
           </div>
-        </div>
-
-        {/* View Toggle Footer */}
-        <div className="fixed bottom-6 right-6 flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/tv">TV View</Link>
-          </Button>
-          <Button variant="default">Admin</Button>
         </div>
       </div>
     </main>
