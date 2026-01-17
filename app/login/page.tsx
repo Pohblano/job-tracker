@@ -90,7 +90,7 @@ export default function LoginPage() {
               <form
                 onSubmit={handleSubmit}
                 onKeyDown={(event) => {
-                  if (event.key !== 'Enter' || event.isComposing) return
+                  if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
                   event.preventDefault()
                   event.currentTarget.requestSubmit()
                 }}
