@@ -6,10 +6,26 @@ import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
-import { type Job } from '@/lib/jobs/types'
+import { type Job, type JobPriority } from '@/lib/jobs/types'
 import { prepareJobsForDisplay, sortJobs } from '@/lib/jobs/presentation'
 import { JobCard } from './JobCard'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 interface JobsBoardProps {
@@ -37,8 +53,46 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
   const [rotationPaused, setRotationPaused] = useState(false)
   const [connectionState, setConnectionState] = useState<ConnectionState>(initialError ? 'disconnected' : 'connected')
   const [lastUpdated, setLastUpdated] = useState(() => new Date(initialFetchedAt))
+  const [filterMode, setFilterMode] = useState<'active' | 'all' | 'completed'>('active')
+  const [sortMode, setSortMode] = useState<'status' | 'recent' | 'priority'>('status')
+  const [pageSize, setPageSize] = useState(5)
 
-  const pageCount = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE))
+  const filterAndSortJobs = useMemo(() => {
+    const priorityRank = (priority: JobPriority | null) => {
+      if (priority === 'HIGH') return 0
+      if (priority === 'MEDIUM') return 1
+      if (priority === 'LOW') return 2
+      return 3
+    }
+
+    const sortByMode = (list: Job[]) => {
+      if (sortMode === 'recent') {
+        return [...list].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      }
+      if (sortMode === 'priority') {
+        return [...list].sort((a, b) => {
+          const diff = priorityRank(a.priority) - priorityRank(b.priority)
+          if (diff !== 0) return diff
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        })
+      }
+      return sortJobs(list)
+    }
+
+    return (list: Job[]) => {
+      let filtered = list
+      if (filterMode === 'active') {
+        filtered = list.filter((job) => job.status !== 'COMPLETED')
+      } else if (filterMode === 'completed') {
+        filtered = list.filter((job) => job.status === 'COMPLETED')
+      }
+      return sortByMode(filtered)
+    }
+  }, [filterMode, sortMode])
+
+  const filteredJobs = useMemo(() => filterAndSortJobs(jobs), [filterAndSortJobs, jobs])
+
+  const pageCount = Math.max(1, Math.ceil(filteredJobs.length / pageSize))
   const handleManualPageChange = (delta: number) => {
     if (pageCount <= 1) return
     setRotationPaused(true)
@@ -166,12 +220,14 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
   }, [supabase, initialError])
 
   const visibleJobs = useMemo(() => {
-    const start = pageIndex * PAGE_SIZE
-    const end = start + PAGE_SIZE
-    return sortJobs(jobs).slice(start, end)
-  }, [jobs, pageIndex])
+    const start = pageIndex * pageSize
+    const end = start + pageSize
+    return filteredJobs.slice(start, end)
+  }, [filteredJobs, pageIndex, pageSize])
 
   const activeJobsCount = jobs.filter(j => j.status !== 'COMPLETED').length
+  const showingStart = filteredJobs.length === 0 ? 0 : pageIndex * pageSize + 1
+  const showingEnd = Math.min(filteredJobs.length, pageIndex * pageSize + pageSize)
 
   return (
     <div className="flex flex-col gap-6">
@@ -208,8 +264,12 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
       </motion.div>
 
       {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
+      <motion.div
+        layout
+        className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white/95 backdrop-blur-sm"
+        transition={{ duration: 0.25, ease: [0.37, 0, 0.63, 1] }}
+      >
+        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-8 py-3">
           {/* Connection Status */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span
@@ -241,54 +301,123 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
           </div>
 
           {/* Pagination */}
-          {pageCount > 1 && (
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleManualPageChange(-1)}
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground justify-self-center">
+            <span>
+              Showing <span className="font-semibold text-gray-900">{showingStart}-{showingEnd}</span> of{' '}
+              <span className="font-semibold text-gray-900">{filteredJobs.length}</span>
+            </span>
+            {pageCount > 1 && (
               <div className="flex items-center gap-2">
-                {Array.from({ length: pageCount }).map((_, idx) => (
-                  <span
-                    key={`page-dot-${idx}`}
-                    className={cn(
-                      'h-2 w-2 rounded-full transition-colors',
-                      idx === pageIndex ? 'bg-gray-900' : 'bg-gray-300'
-                    )}
-                  />
-                ))}
+                <button
+                  type="button"
+                  onClick={() => setPageIndex((current) => Math.max(0, current - 1))}
+                  disabled={pageIndex === 0}
+                  className={cn(
+                    'flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900',
+                    pageIndex === 0 && 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-gray-600',
+                  )}
+                  aria-label="Go to previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: pageCount }).map((_, idx) => (
+                    <button
+                      key={`tv-page-${idx}`}
+                      type="button"
+                      onClick={() => setPageIndex(idx)}
+                      className={cn(
+                        'h-2 w-2 rounded-full border-0 p-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2',
+                        idx === pageIndex ? 'bg-gray-900' : 'bg-gray-300 hover:bg-gray-400',
+                      )}
+                      aria-label={`Go to page ${idx + 1}`}
+                      aria-current={idx === pageIndex ? 'page' : undefined}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPageIndex((current) => Math.min(pageCount - 1, current + 1))}
+                  disabled={pageIndex === pageCount - 1}
+                  className={cn(
+                    'flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900',
+                    pageIndex === pageCount - 1 && 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-gray-600',
+                  )}
+                  aria-label="Go to next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleManualPageChange(1)}
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+            )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Filters & Order
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Show</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={filterMode}
+                  onValueChange={(value) => {
+                    setFilterMode(value as typeof filterMode)
+                    setPageIndex(0)
+                  }}
+                >
+                  <DropdownMenuRadioItem value="active">Active only</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="all">All jobs</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="completed">Completed only</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Order by</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={sortMode}
+                  onValueChange={(value) => {
+                    setSortMode(value as typeof sortMode)
+                    setPageIndex(0)
+                  }}
+                >
+                  <DropdownMenuRadioItem value="status">Status, then recent</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="recent">Recently updated</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="priority">Priority high → low</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Items per page</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={String(pageSize)}
+                  onValueChange={(value) => {
+                    const nextSize = Number(value) || 5
+                    setPageSize(nextSize)
+                    setPageIndex(0)
+                  }}
+                >
+                  {[3, 5, 7, 10].map((size) => (
+                    <DropdownMenuRadioItem key={size} value={String(size)}>{size} items</DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           {/* View Toggle & Count */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-end gap-2">
             <span className="text-sm text-muted-foreground">
               Active jobs: {activeJobsCount}
             </span>
-            <div className="flex items-center gap-2">
-              <Button variant="default" size="sm">
-                TV View
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/admin">Admin</Link>
-              </Button>
-            </div>
+            <Button variant="default" size="sm">
+              TV View
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin">Admin</Link>
+            </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Bottom padding for fixed footer */}
       <div className="h-20" />

@@ -1,14 +1,12 @@
 // Client-side logger with toast surface for user-facing errors and console logging for developers.
 'use client'
 
-import { useToast } from '@/components/ui/use-toast'
-import { logError, logInfo, logWarn, type LogLevel } from '@/lib/logger'
+import { toast } from 'sonner'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 
 type LoggerContext = string
 
 export function useLogger(context: LoggerContext = 'app') {
-  const { toast } = useToast()
-
   const formatMeta = (meta?: Record<string, unknown>) => ({
     context,
     ...(meta ?? {}),
@@ -24,11 +22,7 @@ export function useLogger(context: LoggerContext = 'app') {
 
   const error = (message: string, meta?: Record<string, unknown>) => {
     logError(message, formatMeta(meta))
-    toast({
-      title: 'Something went wrong',
-      description: message,
-      variant: 'destructive',
-    })
+    toast.error('Something went wrong', { description: message })
   }
 
   return { info, warn, error }

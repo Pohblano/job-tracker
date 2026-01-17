@@ -119,7 +119,20 @@ export function EditJobModal({ job, onClose, onSaved }: EditJobModalProps) {
               </div>
               <div className="space-y-2">
                 <Label>Status<span className="ml-1 text-red-600">*</span></Label>
-                <Select value={status} onValueChange={(value) => setStatus(value as JobStatus)} disabled={isPending}>
+                <Select
+                  value={status}
+                  onValueChange={(value) => {
+                    const nextStatus = value as JobStatus
+                    setStatus(nextStatus)
+                    if (nextStatus === 'COMPLETED') {
+                      if (job) {
+                        setPiecesCompletedInput(String(job.total_pieces))
+                      }
+                      setEtaText('completed')
+                    }
+                  }}
+                  disabled={isPending}
+                >
                   <SelectTrigger className="h-11">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>

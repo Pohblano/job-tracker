@@ -13,7 +13,7 @@ export default async function AdminPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      <div className="mx-auto max-w-7xl px-8 py-10">
+      <div className="mx-auto max-w-7xl px-8 pb-24 pt-10">
         <div className="mb-8 flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Job Management</h1>

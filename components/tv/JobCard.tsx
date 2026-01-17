@@ -40,7 +40,7 @@ const STATUS_CONFIG: Record<JobStatus, {
   },
 }
 
-const STATUS_BADGE_BASE = 'border-0 px-5 py-2.5 text-[28px] font-bold uppercase tracking-[0.05em] leading-none whitespace-nowrap'
+const STATUS_BADGE_BASE = 'border-0 px-4 py-1.5 text-[22px] font-bold uppercase tracking-[0.04em] leading-none whitespace-nowrap'
 
 function formatUpdatedTime(dateString: string): string {
   const date = new Date(dateString)
@@ -78,19 +78,19 @@ function JobCardComponent({ job }: JobCardProps) {
     >
       <div className="grid grid-cols-[minmax(0,1fr)_320px_220px] items-stretch divide-x divide-gray-100">
         {/* Left: Job Info */}
-        <div className="p-5">
+        <div className="p-4">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <div className="font-mono text-sm font-semibold text-muted-foreground">{job.part_number || '—'}</div>
               <div className="text-2xl font-bold text-gray-900 leading-tight">{job.title || job.job_number}</div>
-              <div className="text-sm text-muted-foreground line-clamp-2 min-h-[42px]">
+              <div className="text-sm text-muted-foreground line-clamp-2 min-h-[36px]">
                 {job.description?.trim() || 'No description provided'}
               </div>
               <div className="text-sm text-muted-foreground">Qty: {job.total_pieces}</div>
             </div>
             <Badge
-              variant="outline"
-              className={cn(STATUS_BADGE_BASE, config.badgeClass)}
+              variant="secondary"
+              className={cn('self-center', STATUS_BADGE_BASE, config.badgeClass)}
             >
               {formatStatusLabel(job.status)}
             </Badge>
@@ -98,7 +98,7 @@ function JobCardComponent({ job }: JobCardProps) {
         </div>
 
         {/* Center: Progress */}
-        <div className="flex flex-col justify-center px-6 py-5">
+        <div className="flex flex-col justify-center px-5 py-4">
           <div className="mb-2 text-sm font-medium text-muted-foreground">Progress</div>
           <Progress value={percentage} className={cn('h-3', config.progressClass)} />
           <div className="mt-2 text-right text-lg font-semibold tabular-nums text-gray-900">
@@ -107,7 +107,7 @@ function JobCardComponent({ job }: JobCardProps) {
         </div>
 
         {/* Right: ETA */}
-        <div className="flex flex-col justify-center px-6 py-5 text-right">
+        <div className="flex flex-col justify-center px-5 py-4 text-right">
           <div className="mb-1 text-sm font-medium text-muted-foreground">ETA</div>
           <div
             className={cn(

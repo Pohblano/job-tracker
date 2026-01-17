@@ -1,27 +1,25 @@
 // Admin jobs table for SVB; aligns with admin mockups including inline progress updates and full edit modal.
 'use client'
 
-import React, { useState, useTransition } from 'react'
+import React, { useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Pencil, Trash2, Plus } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { ChevronLeft, ChevronRight, Pencil, Trash2, Plus } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { createJobAction, updateJobStatusAction, deleteJobAction } from '@/app/admin/actions'
 import { EditJobModal } from '@/components/admin/EditJobModal'
 import { InlineProgressUpdate } from '@/components/admin/InlineProgressUpdate'
 import { JobForm, type JobFormData } from '@/components/admin/JobForm'
-import { type Job, type JobStatus } from '@/lib/jobs/types'
+import { type Job, type JobPriority, type JobStatus } from '@/lib/jobs/types'
+import { sortJobs } from '@/lib/jobs/presentation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { useLogger } from '@/components/ui/use-logger'
-import { useToast } from '@/components/ui/use-toast'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import {
   Table,
@@ -32,12 +30,23 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+
+const MotionTableRow = motion(TableRow)
 
 interface AdminJobsTableProps {
   initialJobs: Job[]
@@ -95,12 +104,14 @@ function formatUpdatedTime(dateString: string): string {
 
 function AdminJobRow({
   job,
+  index,
   onProgressUpdated,
   onStatusUpdated,
   onDelete,
   onEdit,
 }: {
   job: Job
+  index: number
   onProgressUpdated: (id: string, piecesCompleted: number) => void
   onStatusUpdated: (id: string, status: JobStatus) => void
   onDelete: (id: string) => void
@@ -127,6 +138,7 @@ function AdminJobRow({
       if (result?.status) {
         logger.info('Status updated', { jobId: job.id, from: previousStatus, to: result.status })
       }
+      broadcastChannel?.postMessage({ type: 'job-updated' })
       router.refresh()
     })
   }
@@ -146,7 +158,17 @@ function AdminJobRow({
   }
 
   return (
-    <TableRow className="hover:bg-gray-50">
+    <MotionTableRow
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.35, ease: 'easeOut', delay: index * 0.05 },
+      }}
+      exit={{ opacity: 0, y: -8, transition: { duration: 0.25, ease: 'easeIn' } }}
+      className="hover:bg-gray-50 [&>td]:pl-8 [&>td]:pr-4"
+    >
       {/* Job Details */}
       <TableCell className="w-[280px] max-w-[320px] py-4">
         <div className="space-y-1">
@@ -212,7 +234,7 @@ function AdminJobRow({
       {/* ETA */}
       <TableCell className="w-[160px] max-w-[200px]">
         <div className="space-y-0.5">
-          <div className="text-sm font-medium text-gray-900">
+          <div className="text-lg font-semibold text-gray-900">
             {job.eta_text || '—'}
           </div>
           <div className="text-xs text-muted-foreground">
@@ -268,18 +290,73 @@ function AdminJobRow({
           </div>
         </DialogContent>
       </Dialog>
-    </TableRow>
+    </MotionTableRow>
   )
 }
 
 export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps) {
   const router = useRouter()
   const [jobs, setJobs] = useState(initialJobs)
+  const [pageIndex, setPageIndex] = useState(0)
+  const [filterMode, setFilterMode] = useState<'active' | 'all' | 'completed'>('all')
+  const [sortMode, setSortMode] = useState<'status' | 'recent' | 'priority'>('recent')
+  const [pageSize, setPageSize] = useState(5)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [creationError, setCreationError] = useState<string | null>(null)
   const [creating, startCreateTransition] = useTransition()
   const [editingJob, setEditingJob] = useState<Job | null>(null)
   const [broadcastChannel] = useState(() => (typeof window !== 'undefined' ? new BroadcastChannel('svb-jobs-updates') : null))
+
+  const filterAndSortJobs = useMemo(() => {
+    const priorityRank = (priority: JobPriority | null) => {
+      if (priority === 'HIGH') return 0
+      if (priority === 'MEDIUM') return 1
+      if (priority === 'LOW') return 2
+      return 3
+    }
+
+    const sortByMode = (list: Job[]) => {
+      if (sortMode === 'recent') {
+        return [...list].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      }
+      if (sortMode === 'priority') {
+        return [...list].sort((a, b) => {
+          const diff = priorityRank(a.priority) - priorityRank(b.priority)
+          if (diff !== 0) return diff
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        })
+      }
+      return sortJobs(list)
+    }
+
+    return (list: Job[]) => {
+      let filtered = list
+      if (filterMode === 'active') {
+        filtered = list.filter((job) => job.status !== 'COMPLETED')
+      } else if (filterMode === 'completed') {
+        filtered = list.filter((job) => job.status === 'COMPLETED')
+      }
+      return sortByMode(filtered)
+    }
+  }, [filterMode, sortMode])
+
+  const filteredJobs = useMemo(() => filterAndSortJobs(jobs), [filterAndSortJobs, jobs])
+  const pageCount = Math.max(1, Math.ceil(filteredJobs.length / pageSize))
+
+  useEffect(() => {
+    if (pageIndex >= pageCount) {
+      setPageIndex(Math.max(0, pageCount - 1))
+    }
+  }, [pageCount, pageIndex])
+
+  const visibleJobs = useMemo(() => {
+    const start = pageIndex * pageSize
+    const end = start + pageSize
+    return filteredJobs.slice(start, end)
+  }, [filteredJobs, pageIndex, pageSize])
+
+  const showingStart = filteredJobs.length === 0 ? 0 : pageIndex * pageSize + 1
+  const showingEnd = Math.min(filteredJobs.length, (pageIndex + 1) * pageSize)
 
   const handleProgressUpdated = (id: string, piecesCompleted: number) => {
     setJobs((current) =>
@@ -287,14 +364,17 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
         job.id === id ? { ...job, pieces_completed: piecesCompleted } : job,
       ),
     )
+    broadcastChannel?.postMessage({ type: 'job-updated' })
   }
 
   const handleStatusUpdated = (id: string, status: JobStatus) => {
     setJobs((current) => current.map((job) => (job.id === id ? { ...job, status } : job)))
+    broadcastChannel?.postMessage({ type: 'job-updated' })
   }
 
   const handleDelete = (id: string) => {
     setJobs((current) => current.filter((job) => job.id !== id))
+    broadcastChannel?.postMessage({ type: 'job-updated' })
   }
 
   const handleCreateJob = async (values: JobFormData) => {
@@ -314,6 +394,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
       }
 
       setJobs((current) => [newJob, ...current])
+      setPageIndex(0)
       setIsCreateOpen(false)
       broadcastChannel?.postMessage({ type: 'job-updated' })
       router.refresh()
@@ -351,7 +432,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
 
       {/* Main Table Card */}
       <motion.div
-        className="rounded-xl border border-gray-200 bg-white"
+        className="rounded-xl border border-gray-200 bg-white overflow-y-hidden"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 0.8, 0.44, 1] } }}
         exit={{ opacity: 0, y: -10, transition: { duration: 0.3, ease: [0.37, 0, 0.63, 1] } }}
@@ -376,9 +457,9 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
         {fetchError ? (
           <div className="px-6 py-4 text-sm text-red-700">Unable to load jobs: {fetchError}</div>
         ) : (
-          <Table className="table-fixed">
+          <Table className="table-fixed overflow-y-hidden">
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
+              <TableRow className="hover:bg-transparent [&>th]:pl-8 [&>th]:pr-7">
                 <TableHead className="w-[280px]">Job Details</TableHead>
                 <TableHead className="w-[140px]">Status</TableHead>
                 <TableHead className="w-[220px]">Progress</TableHead>
@@ -393,30 +474,142 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
                     No jobs found. Create your first job to get started.
                   </TableCell>
                 </TableRow>
+              ) : filteredJobs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    No jobs match the current filters.
+                  </TableCell>
+                </TableRow>
               ) : (
-                jobs.map((job) => (
-                  <AdminJobRow
-                    key={job.id}
-                    job={job}
-                    onProgressUpdated={handleProgressUpdated}
-                    onStatusUpdated={handleStatusUpdated}
-                    onDelete={handleDelete}
-                    onEdit={setEditingJob}
-                  />
-                ))
+                <AnimatePresence mode="popLayout">
+                  {visibleJobs.map((job, index) => (
+                    <AdminJobRow
+                      key={job.id}
+                      job={job}
+                      index={index}
+                      onProgressUpdated={handleProgressUpdated}
+                      onStatusUpdated={handleStatusUpdated}
+                      onDelete={handleDelete}
+                      onEdit={setEditingJob}
+                    />
+                  ))}
+                </AnimatePresence>
               )}
             </TableBody>
           </Table>
         )}
       </motion.div>
-      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-3">
+      <motion.div
+        layout
+        className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white/95 backdrop-blur-sm"
+        transition={{ duration: 0.25, ease: [0.37, 0, 0.63, 1] }}
+      >
+        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-8 py-3">
           <div className="text-sm text-muted-foreground">Admin view</div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-semibold text-gray-900">Jobs:</span>
-            <span>{jobs.length}</span>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground justify-self-center">
+            <span>
+              Showing <span className="font-semibold text-gray-900">{showingStart}-{showingEnd}</span> of{' '}
+              <span className="font-semibold text-gray-900">{filteredJobs.length}</span>
+            </span>
+            <div className="flex items-center gap-3">
+              {pageCount > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPageIndex((current) => Math.max(0, current - 1))}
+                    disabled={pageIndex === 0}
+                    className={cn(
+                      'flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900',
+                      pageIndex === 0 && 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-gray-600',
+                    )}
+                    aria-label="Go to previous page"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: pageCount }).map((_, idx) => (
+                      <button
+                        key={`admin-page-${idx}`}
+                        type="button"
+                        onClick={() => setPageIndex(idx)}
+                        className={cn(
+                          'h-2 w-2 rounded-full border-0 p-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2',
+                          idx === pageIndex ? 'bg-gray-900' : 'bg-gray-300 hover:bg-gray-400',
+                        )}
+                        aria-label={`Go to page ${idx + 1}`}
+                        aria-current={idx === pageIndex ? 'page' : undefined}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPageIndex((current) => Math.min(pageCount - 1, current + 1))}
+                    disabled={pageIndex === pageCount - 1}
+                    className={cn(
+                      'flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900',
+                      pageIndex === pageCount - 1 && 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-gray-600',
+                    )}
+                    aria-label="Go to next page"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    Filters &amp; Order
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Show</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={filterMode}
+                    onValueChange={(value) => {
+                      setFilterMode(value as typeof filterMode)
+                      setPageIndex(0)
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="active">Active only</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="all">All jobs</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="completed">Completed only</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Order by</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={sortMode}
+                    onValueChange={(value) => {
+                      setSortMode(value as typeof sortMode)
+                      setPageIndex(0)
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="status">Status, then recent</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="recent">Recently updated</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="priority">Priority high → low</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Items per page</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={String(pageSize)}
+                    onValueChange={(value) => {
+                      const nextSize = Number(value) || 5
+                      setPageSize(nextSize)
+                      setPageIndex(0)
+                    }}
+                  >
+                    {[3, 5, 7, 10].map((size) => (
+                      <DropdownMenuRadioItem key={size} value={String(size)}>{size} items</DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <Button variant="outline" size="sm" asChild>
               <Link href="/tv">TV View</Link>
             </Button>
@@ -425,7 +618,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </>
   )
 }

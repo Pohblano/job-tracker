@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { toast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { loginAction } from './actions'
 
 type AuthState = 'idle' | 'submitting' | 'redirecting'
@@ -41,11 +41,7 @@ export default function LoginPage() {
       if (result.error) {
         setError(result.error)
         setAuthState('idle')
-        toast({
-          title: 'Login failed',
-          description: result.error,
-          variant: 'destructive',
-        })
+        toast.error('Login failed', { description: result.error })
         return
       }
 
@@ -57,11 +53,7 @@ export default function LoginPage() {
     } catch {
       setError('An unexpected error occurred')
       setAuthState('idle')
-      toast({
-        title: 'Unexpected error',
-        description: 'Please try again.',
-        variant: 'destructive',
-      })
+      toast.error('Unexpected error', { description: 'Please try again.' })
     }
   }
 
