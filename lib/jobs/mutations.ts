@@ -23,12 +23,14 @@ export async function updateJobStatus(jobId: string, nextStatus: JobStatus): Pro
   const supabase = client
 
   const { data: job, error: fetchError } = await supabase.from('jobs').select('status').eq('id', jobId).single()
-  if (fetchError || !job) {
+  const currentStatus = job?.status as JobStatus | undefined
+
+  if (fetchError || !currentStatus) {
     console.error('Failed to load job before status update', fetchError)
     return { error: 'Job not found' }
   }
 
-  if (!isForwardStatusTransition(job.status, nextStatus)) {
+  if (!isForwardStatusTransition(currentStatus, nextStatus)) {
     return { error: 'Status must move forward only' }
   }
 
