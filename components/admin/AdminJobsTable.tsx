@@ -113,9 +113,9 @@ function AdminJobRow({
       <TableCell className="py-4">
         <div className="space-y-0.5">
           <div className="font-mono text-sm font-semibold text-gray-900">{job.part_number}</div>
-          <div className="text-sm font-medium text-gray-900">{job.job_number}</div>
-          {job.notes && (
-            <div className="text-sm text-muted-foreground line-clamp-1">{job.notes}</div>
+          <div className="text-sm font-medium text-gray-900">{job.title || job.job_number}</div>
+          {job.description && (
+            <div className="text-sm text-muted-foreground line-clamp-1">{job.description}</div>
           )}
         </div>
       </TableCell>
@@ -230,6 +230,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
   const [creationError, setCreationError] = useState<string | null>(null)
   const [creating, startCreateTransition] = useTransition()
   const [editingJob, setEditingJob] = useState<Job | null>(null)
+  const [broadcastChannel] = useState(() => (typeof window !== 'undefined' ? new BroadcastChannel('svb-jobs-updates') : null))
 
   const handleProgressUpdated = (id: string, piecesCompleted: number) => {
     setJobs((current) =>
@@ -265,6 +266,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
 
       setJobs((current) => [newJob, ...current])
       setIsCreateOpen(false)
+      broadcastChannel?.postMessage({ type: 'job-updated' })
       router.refresh()
     })
   }
@@ -272,6 +274,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
   const handleJobSaved = (updated: Job) => {
     setJobs((current) => current.map((job) => (job.id === updated.id ? updated : job)))
     setEditingJob(null)
+    broadcastChannel?.postMessage({ type: 'job-updated' })
     router.refresh()
   }
 

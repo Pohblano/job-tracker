@@ -139,6 +139,10 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
 
     subscribeToChannel()
 
+    const broadcast = new BroadcastChannel('svb-jobs-updates')
+    const handleBroadcast = () => refreshFromSupabase()
+    broadcast.addEventListener('message', handleBroadcast)
+
     if (initialError) {
       startFallbackPolling()
       refreshFromSupabase()
@@ -148,6 +152,8 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
       if (reconnectTimeout) clearTimeout(reconnectTimeout)
       stopFallbackPolling()
       supabase.removeChannel(activeChannel)
+      broadcast.removeEventListener('message', handleBroadcast)
+      broadcast.close()
     }
   }, [supabase, initialError])
 
