@@ -14,6 +14,8 @@ import { type Job, type JobStatus, calculateProgressPercentage } from '@/lib/job
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useLogger } from '@/components/ui/use-logger'
+import { useToast } from '@/components/ui/use-toast'
 import {
   Select,
   SelectContent,
@@ -80,18 +82,27 @@ function AdminJobRow({
   onEdit: (job: Job) => void
 }) {
   const router = useRouter()
+  const logger = useLogger('AdminJobsTable')
   const [statusPending, startStatusTransition] = useTransition()
   const [deletePending, startDeleteTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const handleStatusChange = (newStatus: JobStatus) => {
+    const previousStatus = job.status
+    onStatusUpdated(job.id, newStatus)
+
     startStatusTransition(async () => {
       const result = await updateJobStatusAction(job.id, newStatus)
-      if (!result?.error) {
-        onStatusUpdated(job.id, newStatus)
-        router.refresh()
+      if (result?.error) {
+        onStatusUpdated(job.id, previousStatus)
+        logger.error('Status update failed', { jobId: job.id, from: previousStatus, to: newStatus, error: result.error })
+        return
       }
+      if (result?.status) {
+        logger.info('Status updated', { jobId: job.id, from: previousStatus, to: result.status })
+      }
+      router.refresh()
     })
   }
 
@@ -112,10 +123,10 @@ function AdminJobRow({
   return (
     <TableRow className="hover:bg-gray-50">
       {/* Job Details */}
-      <TableCell className="py-4">
+      <TableCell className="w-[280px] max-w-[320px] py-4">
         <div className="space-y-0.5">
-          <div className="font-mono text-sm font-semibold text-gray-900">{job.part_number}</div>
-          <div className="text-sm font-medium text-gray-900">{job.title || job.job_number}</div>
+          <div className="text-base font-semibold text-gray-900 leading-tight">{job.title || job.job_number}</div>
+          <div className="font-mono text-xs font-semibold text-muted-foreground">{job.part_number}</div>
           {job.description && (
             <div className="text-sm text-muted-foreground line-clamp-1">{job.description}</div>
           )}
@@ -123,7 +134,7 @@ function AdminJobRow({
       </TableCell>
 
       {/* Status */}
-      <TableCell>
+      <TableCell className="w-[140px]">
         <Select
           value={job.status}
           onValueChange={(value) => handleStatusChange(value as JobStatus)}
@@ -145,7 +156,7 @@ function AdminJobRow({
       </TableCell>
 
       {/* Progress */}
-      <TableCell className="w-[200px]">
+      <TableCell className="w-[220px]">
         <div className="flex flex-col gap-1">
           <InlineProgressUpdate
             jobId={job.id}
@@ -163,7 +174,7 @@ function AdminJobRow({
       </TableCell>
 
       {/* ETA */}
-      <TableCell>
+      <TableCell className="w-[160px] max-w-[200px]">
         <div className="space-y-0.5">
           <div className="text-sm font-medium text-gray-900">
             {job.eta_text || '—'}
@@ -175,7 +186,7 @@ function AdminJobRow({
       </TableCell>
 
       {/* Actions */}
-      <TableCell>
+      <TableCell className="w-[120px]">
         <div className="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
@@ -329,14 +340,14 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
         {fetchError ? (
           <div className="px-6 py-4 text-sm text-red-700">Unable to load jobs: {fetchError}</div>
         ) : (
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[250px]">Job Details</TableHead>
-                <TableHead className="w-[150px]">Status</TableHead>
-                <TableHead className="w-[200px]">Progress</TableHead>
-                <TableHead className="w-[150px]">ETA</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="w-[280px]">Job Details</TableHead>
+                <TableHead className="w-[140px]">Status</TableHead>
+                <TableHead className="w-[220px]">Progress</TableHead>
+                <TableHead className="w-[160px]">ETA</TableHead>
+                <TableHead className="w-[120px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
