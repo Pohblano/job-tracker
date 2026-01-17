@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { ensureAdminRequest } from '@/lib/auth'
-import { createJob, deleteJob, updateJobProgress, updateJobStatus } from '@/lib/jobs/mutations'
+import { createJob, deleteJob, updateJobDetails, updateJobProgress, updateJobStatus } from '@/lib/jobs/mutations'
 import { type JobStatus } from '@/lib/jobs/types'
 
 export async function updateJobStatusAction(jobId: string, nextStatus: JobStatus) {
@@ -68,4 +68,20 @@ export async function deleteJobAction(jobId: string) {
   revalidatePath('/admin')
   revalidatePath('/tv')
   return { success: true }
+}
+
+export async function updateJobDetailsAction(jobId: string, values: unknown) {
+  const auth = ensureAdminRequest()
+  if (!auth.success) {
+    return { error: auth.error }
+  }
+
+  const result = await updateJobDetails(jobId, values as Record<string, unknown>)
+  if (result.error) {
+    return { error: result.error }
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/tv')
+  return { success: true, job: result.data }
 }

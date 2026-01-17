@@ -1,16 +1,17 @@
-// Admin jobs table - matches Job Management mockup design
+// Admin jobs table for SVB; aligns with admin mockups including inline progress updates and full edit modal.
 'use client'
 
-import React, { useEffect, useMemo, useState, useTransition } from 'react'
+import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Pencil, Trash2, Plus } from 'lucide-react'
-import { createJobAction, updateJobProgressAction, updateJobStatusAction, deleteJobAction } from '@/app/admin/actions'
+import { createJobAction, updateJobStatusAction, deleteJobAction } from '@/app/admin/actions'
+import { EditJobModal } from '@/components/admin/EditJobModal'
+import { InlineProgressUpdate } from '@/components/admin/InlineProgressUpdate'
 import { JobForm, type JobFormData } from '@/components/admin/JobForm'
 import { type Job, type JobStatus, calculateProgressPercentage } from '@/lib/jobs/types'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Slider } from '@/components/ui/slider'
 import {
   Select,
   SelectContent,
@@ -40,10 +41,10 @@ interface AdminJobsTableProps {
 }
 
 const STATUS_OPTIONS: { label: string; value: JobStatus }[] = [
-  { label: 'Pending', value: 'RECEIVED' },
+  { label: 'Received', value: 'RECEIVED' },
   { label: 'Quoted', value: 'QUOTED' },
   { label: 'In Progress', value: 'IN_PROGRESS' },
-  { label: 'Done', value: 'COMPLETED' },
+  { label: 'Completed', value: 'COMPLETED' },
 ]
 
 const STATUS_BADGE_STYLES: Record<JobStatus, string> = {
@@ -68,46 +69,23 @@ function AdminJobRow({
   onProgressUpdated,
   onStatusUpdated,
   onDelete,
+  onEdit,
 }: {
   job: Job
   onProgressUpdated: (id: string, piecesCompleted: number) => void
   onStatusUpdated: (id: string, status: JobStatus) => void
   onDelete: (id: string) => void
+  onEdit: (job: Job) => void
 }) {
   const router = useRouter()
-  const percentage = calculateProgressPercentage(job.pieces_completed, job.total_pieces)
-  const [localPercentage, setLocalPercentage] = useState(percentage)
   const [statusPending, startStatusTransition] = useTransition()
-  const [progressPending, startProgressTransition] = useTransition()
   const [deletePending, startDeleteTransition] = useTransition()
-
-  useEffect(() => {
-    setLocalPercentage(percentage)
-  }, [percentage])
 
   const handleStatusChange = (newStatus: JobStatus) => {
     startStatusTransition(async () => {
       const result = await updateJobStatusAction(job.id, newStatus)
       if (!result?.error) {
         onStatusUpdated(job.id, newStatus)
-        router.refresh()
-      }
-    })
-  }
-
-  const handleProgressCommit = (values: number[]) => {
-    const newPercentage = values[0]
-    const newCompleted = Math.round((newPercentage / 100) * job.total_pieces)
-
-    startProgressTransition(async () => {
-      const result = await updateJobProgressAction(job.id, newCompleted, job.total_pieces)
-      if (!result?.error) {
-        onProgressUpdated(job.id, newCompleted)
-        // Auto-complete if 100%
-        if (newPercentage === 100 && job.status !== 'COMPLETED') {
-          await updateJobStatusAction(job.id, 'COMPLETED')
-          onStatusUpdated(job.id, 'COMPLETED')
-        }
         router.refresh()
       }
     })
@@ -161,17 +139,19 @@ function AdminJobRow({
 
       {/* Progress */}
       <TableCell className="w-[200px]">
-        <div className="flex items-center gap-3">
-          <Slider
-            value={[localPercentage]}
-            onValueChange={(values) => setLocalPercentage(values[0])}
-            onValueCommit={handleProgressCommit}
-            max={100}
-            step={1}
-            className="w-[120px]"
-            disabled={progressPending}
+        <div className="flex flex-col gap-1">
+          <InlineProgressUpdate
+            jobId={job.id}
+            completed={job.pieces_completed}
+            total={job.total_pieces}
+            onSaved={(value) => {
+              onProgressUpdated(job.id, value)
+              router.refresh()
+            }}
           />
-          <span className="text-sm text-muted-foreground w-10">{localPercentage}%</span>
+          <span className="text-xs text-muted-foreground">
+            {calculateProgressPercentage(job.pieces_completed, job.total_pieces)}%
+          </span>
         </div>
       </TableCell>
 
@@ -194,6 +174,7 @@ function AdminJobRow({
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-gray-900"
+            onClick={() => onEdit(job)}
             disabled={deletePending}
           >
             <Pencil className="h-4 w-4" />
@@ -219,6 +200,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [creationError, setCreationError] = useState<string | null>(null)
   const [creating, startCreateTransition] = useTransition()
+  const [editingJob, setEditingJob] = useState<Job | null>(null)
 
   const handleProgressUpdated = (id: string, piecesCompleted: number) => {
     setJobs((current) =>
@@ -258,8 +240,16 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
     })
   }
 
+  const handleJobSaved = (updated: Job) => {
+    setJobs((current) => current.map((job) => (job.id === updated.id ? updated : job)))
+    setEditingJob(null)
+    router.refresh()
+  }
+
   return (
     <>
+      <EditJobModal job={editingJob} onClose={() => setEditingJob(null)} onSaved={handleJobSaved} />
+
       {/* New Job Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-xl">
@@ -325,6 +315,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
                     onProgressUpdated={handleProgressUpdated}
                     onStatusUpdated={handleStatusUpdated}
                     onDelete={handleDelete}
+                    onEdit={setEditingJob}
                   />
                 ))
               )}

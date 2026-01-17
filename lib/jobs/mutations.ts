@@ -2,7 +2,7 @@
 import { createServiceRoleSupabaseClient } from '@/lib/supabase/server'
 import { type Database } from '@/lib/supabase/types'
 import { type Job, type JobStatus } from './types'
-import { isForwardStatusTransition, jobSchema, progressUpdateSchema } from './validators'
+import { isForwardStatusTransition, jobEditSchema, jobSchema, progressUpdateSchema } from './validators'
 
 interface MutationResult<T> {
   data?: T
@@ -99,6 +99,72 @@ export async function updateJobProgress(
   }
 
   return { data }
+}
+
+export async function updateJobDetails(
+  jobId: string,
+  values: Partial<Pick<Job, 'status' | 'pieces_completed' | 'eta_text' | 'notes'>>,
+): Promise<MutationResult<Job>> {
+  const { client, error: serviceError } = getServiceClient()
+  if (!client) return { error: serviceError }
+  const supabase = client
+
+  const parsed = jobEditSchema.safeParse(values)
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Invalid job update' }
+  }
+
+  const { data: current, error: fetchError } = await supabase
+    .from('jobs')
+    .select('status,total_pieces,pieces_completed,eta_text,notes')
+    .eq('id', jobId)
+    .single()
+
+  if (fetchError || !current) {
+    console.error('Failed to load job before edit', fetchError)
+    return { error: 'Job not found' }
+  }
+
+  const updates: Database['public']['Tables']['jobs']['Update'] = {}
+
+  if (parsed.data.status) {
+    if (!isForwardStatusTransition(current.status as JobStatus, parsed.data.status)) {
+      return { error: 'Status must move forward only' }
+    }
+    updates.status = parsed.data.status
+  }
+
+  if (parsed.data.pieces_completed !== undefined) {
+    if (parsed.data.pieces_completed < current.pieces_completed) {
+      return { error: 'Completed pieces cannot decrease' }
+    }
+    if (parsed.data.pieces_completed > current.total_pieces) {
+      return { error: 'Pieces completed cannot exceed total pieces' }
+    }
+    updates.pieces_completed = parsed.data.pieces_completed
+  }
+
+  if (parsed.data.eta_text !== undefined) {
+    updates.eta_text = parsed.data.eta_text ?? null
+  }
+
+  if (parsed.data.notes !== undefined) {
+    const trimmed = parsed.data.notes?.trim()
+    updates.notes = trimmed === '' ? null : trimmed ?? null
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return { error: 'No changes to save' }
+  }
+
+  const { data, error } = await supabase.from('jobs').update(updates).eq('id', jobId).select('*').single()
+
+  if (error || !data) {
+    console.error('Failed to update job details', error)
+    return { error: 'Could not update job' }
+  }
+
+  return { data: data as Job }
 }
 
 export async function createJob(values: unknown): Promise<MutationResult<Job>> {

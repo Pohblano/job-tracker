@@ -48,6 +48,18 @@ export const progressUpdateSchema = z
     }
   })
 
+export const jobEditSchema = z.object({
+  status: jobStatusSchema.optional(),
+  pieces_completed: z.number().int().min(0).optional(),
+  eta_text: etaSchema.optional(),
+  notes: z
+    .string()
+    .trim()
+    .max(500, 'Notes are limited to 500 characters')
+    .optional()
+    .nullable(),
+})
+
 export function isForwardStatusTransition(current: JobStatus, next: JobStatus) {
   const currentIndex = STATUS_FLOW_ORDER.indexOf(current)
   const nextIndex = STATUS_FLOW_ORDER.indexOf(next)
