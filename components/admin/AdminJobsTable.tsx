@@ -274,7 +274,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
     setJobs((current) => current.map((job) => (job.id === id ? { ...job, status } : job)))
   }
 
-  const handleCreateJob = (values: JobFormData) => {
+  const handleCreateJob = async (values: JobFormData) => {
     setCreationError(null)
     setCreationNotice(null)
 
@@ -285,12 +285,16 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
         return
       }
 
-      if (result?.job) {
-        setJobs((current) => [result.job, ...current])
-        setIsCreateOpen(false)
-        setCreationNotice(`Job ${result.job.job_number} created and sent to the TV.`)
-        router.refresh()
+      const newJob = result?.job
+      if (!newJob) {
+        setCreationError('Job was created but no data was returned.')
+        return
       }
+
+      setJobs((current) => [newJob, ...current])
+      setIsCreateOpen(false)
+      setCreationNotice(`Job ${newJob.job_number} created and sent to the TV.`)
+      router.refresh()
     })
   }
 
