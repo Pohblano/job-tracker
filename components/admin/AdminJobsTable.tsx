@@ -355,6 +355,15 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
           </Table>
         )}
       </div>
+      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-3">
+          <div className="text-sm text-muted-foreground">Admin view</div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="font-semibold text-gray-900">Jobs:</span>
+            <span>{jobs.length}</span>
+          </div>
+        </div>
+      </div>
     </>
   )
 }
