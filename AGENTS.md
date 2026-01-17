@@ -256,3 +256,10 @@ These documents are extensions of this contract.
 - Pull requests must summarize the problem, the solution, and risk areas; list testing performed; and call out TV-impacting behavior explicitly.
 - Keep PR diffs scoped to the task—no drive-by refactors or dependency bumps without prior need.
 - If screenshots or recordings clarify TV/admin changes, include them in the PR description.
+
+---
+
+## 17. Modal & Component Consistency (Additional Rule)
+
+- Admin modals must match the New Job modal styling and structure: use shadcn/ui Dialog, Input, Select, Textarea, Label, Button components (no custom modal shells).
+- New edit/create modals should reuse the same padding, typography, and control spacing as the New Job modal for visual consistency.
