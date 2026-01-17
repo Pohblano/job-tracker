@@ -1,5 +1,5 @@
 // Browser Supabase client for SVB; powers realtime subscriptions on the TV view.
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { type Database } from './types'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -10,15 +10,16 @@ if (!supabaseUrl || !anonKey) {
 }
 
 let browserClient: ReturnType<typeof createClient<Database>> | null = null
+let typedBrowserClient: SupabaseClient<Database> | null = null
 
 export function createBrowserSupabaseClient() {
-  if (browserClient) return browserClient
+  if (typedBrowserClient) return typedBrowserClient
 
   if (typeof window === 'undefined') {
     throw new Error('createBrowserSupabaseClient should only be used in client components.')
   }
 
-  browserClient = createClient<Database>(supabaseUrl, anonKey, {
+  browserClient = createClient(supabaseUrl!, anonKey!, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -30,5 +31,6 @@ export function createBrowserSupabaseClient() {
     },
   })
 
-  return browserClient
+  typedBrowserClient = browserClient as SupabaseClient<Database>
+  return typedBrowserClient
 }

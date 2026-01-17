@@ -39,11 +39,15 @@ export interface Database {
           updated_at?: string
         }
         Update: Partial<Database['public']['Tables']['jobs']['Insert']>
+        Relationships: []
       }
     }
+    Views: {}
+    Functions: {}
     Enums: {
       job_status: JobStatus
       job_priority: JobPriority
     }
+    CompositeTypes: {}
   }
 }

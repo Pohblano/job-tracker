@@ -1,5 +1,6 @@
 // Server-side job mutations for SVB; validates business rules before updating Supabase.
 import { createServiceRoleSupabaseClient } from '@/lib/supabase/server'
+import { type Database } from '@/lib/supabase/types'
 import { type Job, type JobStatus } from './types'
 import { isForwardStatusTransition, jobSchema, progressUpdateSchema } from './validators'
 
@@ -34,9 +35,11 @@ export async function updateJobStatus(jobId: string, nextStatus: JobStatus): Pro
     return { error: 'Status must move forward only' }
   }
 
+  const updatePayload: Database['public']['Tables']['jobs']['Update'] = { status: nextStatus }
+
   const { error: updateError, data } = await supabase
     .from('jobs')
-    .update({ status: nextStatus })
+    .update(updatePayload)
     .eq('id', jobId)
     .select('status')
     .single()
@@ -59,7 +62,7 @@ export async function updateJobProgress(
 
   const parsed = progressUpdateSchema.safeParse(values)
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? 'Invalid progress update' }
+    return { error: parsed.error.issues[0]?.message ?? 'Invalid progress update' }
   }
 
   const { data: job, error: fetchError } = await supabase
@@ -78,12 +81,14 @@ export async function updateJobProgress(
     return { error: 'Completed pieces cannot decrease' }
   }
 
+  const updatePayload: Database['public']['Tables']['jobs']['Update'] = {
+    pieces_completed: parsed.data.pieces_completed,
+    total_pieces: parsed.data.total_pieces,
+  }
+
   const { error: updateError, data } = await supabase
     .from('jobs')
-    .update({
-      pieces_completed: parsed.data.pieces_completed,
-      total_pieces: parsed.data.total_pieces,
-    })
+    .update(updatePayload)
     .eq('id', jobId)
     .select('pieces_completed,total_pieces')
     .single()
@@ -103,7 +108,7 @@ export async function createJob(values: unknown): Promise<MutationResult<Job>> {
 
   const parsed = jobSchema.safeParse(values)
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? 'Invalid job payload' }
+    return { error: parsed.error.issues[0]?.message ?? 'Invalid job payload' }
   }
 
   const payload = {
