@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import { AnimatePresence, motion } from 'framer-motion'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { type Job } from '@/lib/jobs/types'
 import { prepareJobsForDisplay, sortJobs } from '@/lib/jobs/presentation'
@@ -166,7 +167,12 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
   const activeJobsCount = jobs.filter(j => j.status !== 'COMPLETED').length
 
   return (
-    <div className="flex flex-col gap-6">
+    <motion.div
+      className="flex flex-col gap-6"
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 0.8, 0.44, 1] } }}
+      exit={{ opacity: 0, y: -12, transition: { duration: 0.35, ease: [0.37, 0, 0.63, 1] } }}
+    >
       {/* Job Cards */}
       <div className="space-y-4">
         {visibleJobs.length === 0 ? (
@@ -174,7 +180,19 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
             <p className="text-lg text-muted-foreground">No active jobs at this time</p>
           </div>
         ) : (
-          visibleJobs.map((job) => <JobCard key={job.id} job={job} />)
+          <AnimatePresence mode="popLayout">
+            {visibleJobs.map((job) => (
+              <motion.div
+                key={job.id}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } }}
+                exit={{ opacity: 0, y: -8, transition: { duration: 0.25, ease: 'easeIn' } }}
+              >
+                <JobCard job={job} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         )}
       </div>
 
@@ -232,6 +250,6 @@ export function JobsBoard({ initialJobs, initialFetchedAt, initialError }: JobsB
 
       {/* Bottom padding for fixed footer */}
       <div className="h-20" />
-    </div>
+    </motion.div>
   )
 }

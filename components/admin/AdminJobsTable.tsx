@@ -5,6 +5,7 @@ import React, { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Pencil, Trash2, Plus } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { createJobAction, updateJobStatusAction, deleteJobAction } from '@/app/admin/actions'
 import { EditJobModal } from '@/components/admin/EditJobModal'
 import { InlineProgressUpdate } from '@/components/admin/InlineProgressUpdate'
@@ -302,7 +303,12 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
       </Dialog>
 
       {/* Main Table Card */}
-      <div className="rounded-xl border border-gray-200 bg-white">
+      <motion.div
+        className="rounded-xl border border-gray-200 bg-white"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 0.8, 0.44, 1] } }}
+        exit={{ opacity: 0, y: -10, transition: { duration: 0.3, ease: [0.37, 0, 0.63, 1] } }}
+      >
         {/* Header with New Job button */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div className="text-sm text-muted-foreground">
@@ -355,7 +361,7 @@ export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps)
             </TableBody>
           </Table>
         )}
-      </div>
+      </motion.div>
       <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-3">
           <div className="text-sm text-muted-foreground">Admin view</div>
