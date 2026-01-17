@@ -75,10 +75,10 @@ function JobCardComponent({ job }: JobCardProps) {
         <div className="flex-1 border-r border-gray-100 p-5">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <div className="font-mono text-lg font-bold text-gray-900">{job.part_number}</div>
-              <div className="text-base font-medium text-gray-900">{job.job_number}</div>
-              {job.notes && (
-                <div className="text-sm text-muted-foreground line-clamp-1">{job.notes}</div>
+              <div className="text-2xl font-bold text-gray-900 leading-tight">{job.title || job.job_number}</div>
+              <div className="font-mono text-sm font-semibold text-muted-foreground">{job.part_number}</div>
+              {job.description && (
+                <div className="text-sm text-muted-foreground line-clamp-1">{job.description}</div>
               )}
               <div className="text-sm text-muted-foreground">
                 Qty: {job.total_pieces}
