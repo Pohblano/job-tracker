@@ -4,7 +4,7 @@ import { JobsBoard } from '@/components/tv/JobsBoard'
 import { TVHeader } from '@/components/tv/TVHeader'
 import { fetchJobs } from '@/lib/jobs/queries'
 
-export const revalidate = 0
+export const dynamic = 'force-dynamic'
 
 export default async function TVPage() {
   const { jobs, error } = await fetchJobs()
