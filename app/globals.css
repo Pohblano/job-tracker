@@ -33,6 +33,10 @@
     --radius: 0.5rem;
   }
 
+  * {
+    @apply border-border;
+  }
+
   body {
     @apply bg-tv-background text-tv-text font-sans antialiased min-h-screen;
   }
@@ -76,16 +80,5 @@
   .tv-job-row {
     @apply transition-colors;
     transition: background-color 1500ms ease, opacity 300ms ease;
-  }
-}
-
-
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
   }
 }

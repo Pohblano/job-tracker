@@ -1,6 +1,7 @@
 'use client'
-// TV header with title and large clock display
+// TV header with title, logo, and large clock display
 import React, { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('en-US', {
@@ -31,13 +32,23 @@ export function TVHeader() {
 
   return (
     <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl xl:text-5xl">
-          Shop Visibility Board
-        </h1>
-        <p className="mt-1 text-xs text-muted-foreground sm:text-sm lg:text-base">
-          Real-time production status
-        </p>
+      <div className="flex items-start gap-3">
+        <Image
+          src="/valar-square.avif"
+          alt="Valar Square logo"
+          width={96}
+          height={96}
+          priority
+          className="h-10 w-10 rounded-md object-cover sm:h-12 sm:w-12 lg:h-14 lg:w-14"
+        />
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl xl:text-5xl">
+            Shop Visibility Board
+          </h1>
+          <p className="mt-1 text-xs text-muted-foreground sm:text-sm lg:text-base">
+            Real-time production status
+          </p>
+        </div>
       </div>
       <div className="text-left sm:text-right">
         <div className="text-2xl font-semibold tabular-nums text-gray-900 sm:text-3xl lg:text-4xl xl:text-5xl">
