@@ -102,15 +102,7 @@ function formatUpdatedTime(dateString: string): string {
   })
 }
 
-function AdminJobRow({
-  job,
-  index,
-  onProgressUpdated,
-  onStatusUpdated,
-  onDelete,
-  onEdit,
-  broadcastChannel,
-}: {
+const AdminJobRow = React.forwardRef<HTMLTableRowElement, {
   job: Job
   index: number
   onProgressUpdated: (id: string, piecesCompleted: number) => void
@@ -118,7 +110,18 @@ function AdminJobRow({
   onDelete: (id: string) => void
   onEdit: (job: Job) => void
   broadcastChannel: BroadcastChannel | null
-}) {
+}>(function AdminJobRow(
+  {
+    job,
+    index,
+    onProgressUpdated,
+    onStatusUpdated,
+    onDelete,
+    onEdit,
+    broadcastChannel,
+  },
+  ref,
+) {
   const router = useRouter()
   const logger = useLogger('AdminJobsTable')
   const [statusPending, startStatusTransition] = useTransition()
@@ -161,6 +164,7 @@ function AdminJobRow({
 
   return (
     <MotionTableRow
+      ref={ref}
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{
@@ -294,17 +298,11 @@ function AdminJobRow({
       </Dialog>
     </MotionTableRow>
   )
-}
+})
 
-function AdminJobCard({
-  job,
-  index,
-  onProgressUpdated,
-  onStatusUpdated,
-  onDelete,
-  onEdit,
-  broadcastChannel,
-}: {
+AdminJobRow.displayName = 'AdminJobRow'
+
+const AdminJobCard = React.forwardRef<HTMLDivElement, {
   job: Job
   index: number
   onProgressUpdated: (id: string, piecesCompleted: number) => void
@@ -312,7 +310,18 @@ function AdminJobCard({
   onDelete: (id: string) => void
   onEdit: (job: Job) => void
   broadcastChannel: BroadcastChannel | null
-}) {
+}>(function AdminJobCard(
+  {
+    job,
+    index,
+    onProgressUpdated,
+    onStatusUpdated,
+    onDelete,
+    onEdit,
+    broadcastChannel,
+  },
+  ref,
+) {
   const router = useRouter()
   const logger = useLogger('AdminJobsTable')
   const [statusPending, startStatusTransition] = useTransition()
@@ -355,6 +364,7 @@ function AdminJobCard({
 
   return (
     <motion.div
+      ref={ref}
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{
@@ -485,7 +495,9 @@ function AdminJobCard({
       </Dialog>
     </motion.div>
   )
-}
+})
+
+AdminJobCard.displayName = 'AdminJobCard'
 
 export function AdminJobsTable({ initialJobs, fetchError }: AdminJobsTableProps) {
   const router = useRouter()
